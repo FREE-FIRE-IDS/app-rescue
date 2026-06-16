@@ -1,5 +1,5 @@
 import React from 'react';
-import { CandleData } from '../types';
+import { CandleData } from '@/lib/mr-binary/types';
 
 interface AIChartProps {
   candles: CandleData[];

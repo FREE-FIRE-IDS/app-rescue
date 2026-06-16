@@ -19,7 +19,7 @@ import {
   Sliders,
   Settings
 } from 'lucide-react';
-import { MarketPriceData, SignalResponse, ScreenState, TimeFrameOption, CandleData } from './types';
+import { MarketPriceData, SignalResponse, ScreenState, TimeFrameOption, CandleData } from '@/lib/mr-binary/types';
 
 export default function App() {
   // Login & Flow State
