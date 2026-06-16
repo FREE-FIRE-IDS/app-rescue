@@ -31,10 +31,14 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [apiError, setApiError] = useState('');
   const [settings, setSettings] = useState({
-    delaySeconds: 5,         // Locked to best Ultra delay (performs all 16 deep phases visually)
-    allowWaitSignal: true,   // Enabled by default so we get Wait signals on sideways chop
-    aiMindsetFocus: 98       // Maximized focus for Deep Institutional accuracy
+    delaySeconds: 5,
+    allowWaitSignal: false,  // Disabled — operator wants only CALL / PUT (no WAIT)
+    aiMindsetFocus: 98
   });
+
+  // Server-function hooks for live market data + signal computation
+  const fetchMarketData = useServerFn(fetchMarketDataFn);
+  const generateSignalFromMarket = useServerFn(generateSignalFn);
   
   const [selectedPair, setSelectedPair] = useState<string>('XAU/USD');
 
