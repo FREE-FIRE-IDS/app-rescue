@@ -4,11 +4,11 @@ import MRBinaryApp from "@/components/MRBinaryApp";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "M-R BINARY — Educational Demo" },
+      { title: "M-R BINARY | GOLD" },
       {
         name: "description",
         content:
-          "Educational UI demo of a futuristic market signaling dashboard. All data is simulated — not financial advice.",
+          "M-R BINARY — futuristic market signal dashboard with live Yahoo Finance feed and real-time technical indicator analysis for XAU/USD and major pairs.",
       },
     ],
     links: [
@@ -22,17 +22,5 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  return (
-    <>
-      <div
-        role="alert"
-        className="fixed top-0 inset-x-0 z-[100] bg-yellow-500 text-black text-center text-xs sm:text-sm font-bold px-3 py-1.5 shadow-lg"
-      >
-        ⚠ EDUCATIONAL DEMO — ALL DATA IS SIMULATED. NOT FINANCIAL ADVICE. DO NOT TRADE REAL MONEY ON THESE SIGNALS.
-      </div>
-      <div className="pt-7">
-        <MRBinaryApp />
-      </div>
-    </>
-  );
+  return <MRBinaryApp />;
 }
