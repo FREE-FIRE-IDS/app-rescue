@@ -20,7 +20,8 @@ import {
   Settings
 } from 'lucide-react';
 import { MarketPriceData, SignalResponse, ScreenState, TimeFrameOption, CandleData } from '@/lib/mr-binary/types';
-import { simulateMarketData, simulateSignal } from '@/lib/mr-binary/simulator';
+import { useServerFn } from '@tanstack/react-start';
+import { fetchMarketDataFn, generateSignalFn } from '@/lib/mr-binary/market.functions';
 
 export default function App() {
   // Login & Flow State
