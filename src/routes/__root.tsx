@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "MR BINARY" },
+      { name: "description", content: "MR Binary delivers real-time trading signals, market analysis, and powerful tools designed to help traders make smarter decisions." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "MR BINARY" },
+      { property: "og:description", content: "MR Binary delivers real-time trading signals, market analysis, and powerful tools designed to help traders make smarter decisions." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "MR BINARY" },
+      { name: "twitter:description", content: "MR Binary delivers real-time trading signals, market analysis, and powerful tools designed to help traders make smarter decisions." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/pjASiZdmkJWSkkTPrkfVTvjfM5F2/social-images/social-1781594396746-ChatGPT_Image_Jun_14,_2026,_05_25_21_PM.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/pjASiZdmkJWSkkTPrkfVTvjfM5F2/social-images/social-1781594396746-ChatGPT_Image_Jun_14,_2026,_05_25_21_PM.webp" },
     ],
     links: [
       {
