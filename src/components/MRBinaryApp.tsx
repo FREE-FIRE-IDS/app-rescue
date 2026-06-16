@@ -20,6 +20,7 @@ import {
   Settings
 } from 'lucide-react';
 import { MarketPriceData, SignalResponse, ScreenState, TimeFrameOption, CandleData } from '@/lib/mr-binary/types';
+import { simulateMarketData, simulateSignal } from '@/lib/mr-binary/simulator';
 
 export default function App() {
   // Login & Flow State
@@ -142,43 +143,22 @@ export default function App() {
     }
   };
 
-  // Fetch prices in real-time from our api
+  // Simulated price tick (SIMULATED DATA — for UI demo only)
   useEffect(() => {
-    const fetchMarket = async () => {
-      try {
-        const res = await fetch(`/api/market-data?pair=${selectedPair}`);
-        if (res.ok) {
-          const data: MarketPriceData = await res.json();
-          setPriceData(data);
-          setPriceHistory(prev => [...prev.slice(1), data.price]);
-          updateCandles(data.price);
-        }
-      } catch (err) {
-        const scale = selectedPair.includes('BTC') ? 15.0 : selectedPair.includes('JPY') ? 0.05 : (selectedPair.includes('EUR') || selectedPair.includes('GBP')) ? 0.00008 : 0.08;
-        const decimals = selectedPair.includes('EUR') || selectedPair.includes('GBP') ? 5 : 2;
-        const randomDrift = (Math.random() - 0.5) * scale;
-        
-        setPriceData(prev => {
-          const newPrice = parseFloat((prev.price + randomDrift).toFixed(decimals));
-          updateCandles(newPrice);
-          return {
-            ...prev,
-            price: newPrice,
-            change: parseFloat((((newPrice - prev.price) / prev.price) * 100).toFixed(4)),
-            timestamp: Date.now()
-          };
-        });
-      }
+    const tick = async () => {
+      const data = await simulateMarketData(selectedPair);
+      setPriceData(data);
+      setPriceHistory((prev: number[]) => [...prev.slice(1), data.price]);
+      updateCandles(data.price);
     };
-
-    const interval = setInterval(fetchMarket, 1500);
+    const interval = setInterval(tick, 1500);
     return () => clearInterval(interval);
   }, [selectedPair]);
 
-  // Authentication Submission
+  // Demo login — any non-empty username/password works. No real auth.
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'AHAD' && password === '16897463890072') {
+    if (username.trim() && password.trim()) {
       playBeep(880, 'sine', 0.2);
       if (typeof window !== 'undefined') {
         localStorage.setItem('M_R_BINARY_LOGGED', 'true');
@@ -189,7 +169,7 @@ export default function App() {
       setAuthError('');
     } else {
       playBeep(220, 'sawtooth', 0.4);
-      setAuthError('INCORRECT OPERATOR PASSWORD. ACCESS DENIED.');
+      setAuthError('ENTER ANY USERNAME AND PASSWORD TO CONTINUE (DEMO MODE).');
     }
   };
 
@@ -251,27 +231,11 @@ export default function App() {
     playBeep(600, 'sawtooth', 0.1);
 
     try {
-      const response = await fetch('/api/generate-signal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          timeFrame: selectedTime,
-          settings,
-          pair: selectedPair
-        })
-      });
-
-      if (!response.ok) {
-        let errMsg = "Could not construct signal data stream from the market statistics backend.";
-        try {
-          const errData = await response.json();
-          if (errData && errData.error) {
-            errMsg = `Backend Error: ${errData.error}`;
-          }
-        } catch (_) {}
-        throw new Error(errMsg);
-      }
-      const signal: SignalResponse = await response.json();
+      const signal: SignalResponse = await simulateSignal(
+        selectedPair,
+        selectedTime,
+        settings.allowWaitSignal,
+      );
 
       // If calculation delay is configured, perform step-by-step visual scan representation
       if (settings.delaySeconds > 0) {
