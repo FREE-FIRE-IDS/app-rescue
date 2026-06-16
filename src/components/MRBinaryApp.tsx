@@ -148,22 +148,27 @@ export default function App() {
     }
   };
 
-  // Simulated price tick (SIMULATED DATA — for UI demo only)
+  // Live price tick from Yahoo Finance via server function
   useEffect(() => {
     const tick = async () => {
-      const data = await simulateMarketData(selectedPair);
-      setPriceData(data);
-      setPriceHistory((prev: number[]) => [...prev.slice(1), data.price]);
-      updateCandles(data.price);
+      try {
+        const data = await fetchMarketData({ data: { pair: selectedPair } });
+        setPriceData(data);
+        setPriceHistory((prev: number[]) => [...prev.slice(1), data.price]);
+        updateCandles(data.price);
+      } catch (err) {
+        // network blip — skip this tick silently
+      }
     };
-    const interval = setInterval(tick, 1500);
+    tick();
+    const interval = setInterval(tick, 3000);
     return () => clearInterval(interval);
-  }, [selectedPair]);
+  }, [selectedPair, fetchMarketData]);
 
-  // Demo login — any non-empty username/password works. No real auth.
+  // Operator authentication — restored AHAD credentials
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim() && password.trim()) {
+    if (username === 'AHAD' && password === '16897463890072') {
       playBeep(880, 'sine', 0.2);
       if (typeof window !== 'undefined') {
         localStorage.setItem('M_R_BINARY_LOGGED', 'true');
@@ -174,7 +179,7 @@ export default function App() {
       setAuthError('');
     } else {
       playBeep(220, 'sawtooth', 0.4);
-      setAuthError('ENTER ANY USERNAME AND PASSWORD TO CONTINUE (DEMO MODE).');
+      setAuthError('INCORRECT OPERATOR PASSWORD. ACCESS DENIED.');
     }
   };
 
@@ -236,11 +241,9 @@ export default function App() {
     playBeep(600, 'sawtooth', 0.1);
 
     try {
-      const signal: SignalResponse = await simulateSignal(
-        selectedPair,
-        selectedTime,
-        settings.allowWaitSignal,
-      );
+      const signal: SignalResponse = await generateSignalFromMarket({
+        data: { pair: selectedPair, timeFrame: selectedTime },
+      });
 
       // If calculation delay is configured, perform step-by-step visual scan representation
       if (settings.delaySeconds > 0) {
