@@ -248,9 +248,82 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       maxScore += Math.abs(p.weight) * 1.5; // assume max |vote| ~1.5
     }
     const alignment = Math.abs(score) / (maxScore || 1); // 0..1
-    const direction: "CALL" | "PUT" = score >= 0 ? "CALL" : "PUT";
+    let direction: "CALL" | "PUT" = score >= 0 ? "CALL" : "PUT";
+    let confidence = Math.min(97, Math.max(82, Math.round(85 + alignment * 14)));
+
+    // ---------- AI Layer (Lovable AI Gateway / Gemini) ----------
+    // Sends the indicator snapshot to Gemini for an independent CALL/PUT vote.
+    // If AI agrees with technicals → confidence boost. If disagrees → small trim.
+    let aiVerdict: "CALL" | "PUT" | "UNKNOWN" = "UNKNOWN";
+    let aiNote = "";
+    try {
+      const key = process.env.LOVABLE_API_KEY;
+      if (key) {
+        const snapshot = {
+          pair, timeframe: cfg.interval, htf: cfg.htf,
+          price: +price.toFixed(d),
+          sma5: +sma5v.toFixed(d), sma20: +sma20v.toFixed(d), sma50: +sma50v.toFixed(d),
+          ema9: +ema9v.toFixed(d), ema21: +ema21v.toFixed(d),
+          rsi14: +rsi14.toFixed(2),
+          macd: { line: +m.line.toFixed(d), signal: +m.signal.toFixed(d), hist: +m.hist.toFixed(d) },
+          stoch: +stoch.toFixed(2),
+          bbPosPct: +(bbPos * 100).toFixed(1),
+          atr14: +atr14.toFixed(d),
+          htfTrend: htfTrendUp ? "up" : "down",
+          nearSupport: nearSup, nearResistance: nearRes,
+          volumeSpikeX: +volSpike.toFixed(2),
+          bullCandle, bodyPctOfATR: +(bodyPct * 100).toFixed(1),
+          divergence: bullishDiv ? "bullish" : bearishDiv ? "bearish" : "none",
+          confluenceScore: +score.toFixed(2),
+          technicalDirection: direction,
+        };
+        const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Lovable-API-Key": key,
+          },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            messages: [
+              { role: "system", content: "You are a strict binary-options technical analyst. Given a JSON indicator snapshot, you MUST respond with ONLY valid JSON: {\"direction\":\"CALL\"|\"PUT\",\"confidence\":0-100,\"reason\":\"one short sentence\"}. No prose, no markdown." },
+              { role: "user", content: JSON.stringify(snapshot) },
+            ],
+          }),
+          signal: AbortSignal.timeout(6000),
+        });
+        if (aiRes.ok) {
+          const j: any = await aiRes.json();
+          const raw: string = j.choices?.[0]?.message?.content ?? "";
+          const match = raw.match(/\{[\s\S]*\}/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            if (parsed.direction === "CALL" || parsed.direction === "PUT") {
+              aiVerdict = parsed.direction;
+              aiNote = String(parsed.reason ?? "");
+              if (aiVerdict === direction) {
+                // Agreement → boost confidence
+                const aiConf = Math.max(70, Math.min(99, Number(parsed.confidence) || 85));
+                confidence = Math.min(99, Math.round((confidence + aiConf) / 2) + 3);
+              } else {
+                // Disagreement: if AI is very confident, flip; else trim
+                const aiConf = Number(parsed.confidence) || 0;
+                if (aiConf >= 80 && alignment < 0.45) {
+                  direction = aiVerdict as "CALL" | "PUT";
+                  confidence = Math.max(80, Math.round(aiConf));
+                } else {
+                  confidence = Math.max(75, confidence - 6);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // AI optional — fall back to technical confidence
+    }
+
     const isUp = direction === "CALL";
-    const confidence = Math.min(96, Math.max(55, Math.round(55 + alignment * 45)));
 
     const phases: PhaseCheck[] = P.map((p, i) => ({
       phase: i + 1,
