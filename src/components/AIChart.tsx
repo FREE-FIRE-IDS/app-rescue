@@ -6,7 +6,7 @@ interface AIChartProps {
   currentPrice: number;
   isScanning: boolean;
   scanProgress: number; // 0 to 100
-  direction: 'CALL' | 'PUT' | 'WAIT' | null;
+  direction: 'CALL' | 'PUT' | null;
   pair?: string;
 }
 
