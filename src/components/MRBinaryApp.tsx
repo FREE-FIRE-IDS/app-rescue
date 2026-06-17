@@ -777,7 +777,7 @@ export default function App() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                           <div className="text-center p-6 rounded-lg bg-black/60 border border-[#00ff66]/20 flex flex-col items-center relative overflow-hidden">
                             {/* Glow indicator backing */}
-                            <div className={`absolute -inset-10 opacity-10 rounded-full blur-2xl ${activeSignal.direction === 'CALL' ? 'bg-[#00ff66]' : activeSignal.direction === 'PUT' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                            <div className={`absolute -inset-10 opacity-10 rounded-full blur-2xl ${activeSignal.direction === 'CALL' ? 'bg-[#00ff66]' : 'bg-red-500'}`} />
 
                             <span className="text-[10px] font-mono text-[#00ff66]/50 uppercase tracking-widest mb-1 z-10 font-bold">RECOMMENDED ACTION</span>
                             
