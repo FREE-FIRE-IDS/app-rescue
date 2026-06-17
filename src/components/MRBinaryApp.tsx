@@ -1,23 +1,15 @@
-import React, { useState, useEffect, useRef, FormEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Lock, 
   User, 
   Activity, 
-  ShieldCheck, 
-  Cpu, 
   TrendingUp, 
   TrendingDown, 
   Zap, 
-  RefreshCw, 
   Clock, 
-  Play, 
   AlertTriangle,
-  Info,
-  CheckCircle2,
-  ListRestart,
   Sliders,
-  Settings
 } from 'lucide-react';
 import { MarketPriceData, SignalResponse, ScreenState, TimeFrameOption, CandleData } from '@/lib/mr-binary/types';
 import { useServerFn } from '@tanstack/react-start';
@@ -74,7 +66,7 @@ export default function App() {
   });
 
   // Initialize 18 historical candlestick chart blocks
-  const [candles, setCandles] = useState<CandleData[]>(() => generateCandles('XAU/USD'));
+  const [, setCandles] = useState<CandleData[]>(() => generateCandles('XAU/USD'));
 
   const updateCandles = (newPrice: number) => {
     setCandles(prev => {
