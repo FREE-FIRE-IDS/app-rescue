@@ -30,10 +30,8 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [apiError, setApiError] = useState('');
-  const [settings, setSettings] = useState({
+  const [settings] = useState({
     delaySeconds: 5,
-    allowWaitSignal: false,  // Disabled — operator wants only CALL / PUT (no WAIT)
-    aiMindsetFocus: 98
   });
 
   // Server-function hooks for live market data + signal computation
@@ -42,26 +40,19 @@ export default function App() {
   
   const [selectedPair, setSelectedPair] = useState<string>('XAU/USD');
 
-  // Helper for dynamic multi-symbol candle data seeding
+  // Deterministic candle placeholders only until the live feed starts updating them.
   const generateCandles = (symbol: string): CandleData[] => {
-    let base = symbol === 'BTC/USD' ? 67250.00 : symbol === 'USD/JPY' ? 157.42 : symbol === 'GBP/USD' ? 1.2715 : symbol === 'EUR/USD' ? 1.0824 : 2378.45;
+    const base = symbol === 'BTC/USD' ? 67250.00 : symbol === 'USD/JPY' ? 157.42 : symbol === 'GBP/USD' ? 1.2715 : symbol === 'EUR/USD' ? 1.0824 : 2378.45;
     const decimals = symbol.includes('EUR') || symbol.includes('GBP') ? 5 : 2;
-    const spread = symbol === 'BTC/USD' ? 250.00 : symbol === 'USD/JPY' ? 0.35 : symbol.includes('USD/') ? 0.0020 : 4.0;
-    
     return Array.from({ length: 18 }).map((_, i) => {
-      const open = base + (Math.random() - 0.48) * (spread / 2);
-      const close = open + (Math.random() - 0.5) * spread;
-      const high = Math.max(open, close) + Math.random() * (spread / 4);
-      const low = Math.min(open, close) - Math.random() * (spread / 4);
-      base = close;
       return {
         time: `${18 - i}m ago`,
-        open: parseFloat(open.toFixed(decimals)),
-        high: parseFloat(high.toFixed(decimals)),
-        low: parseFloat(low.toFixed(decimals)),
-        close: parseFloat(close.toFixed(decimals)),
-        volume: Math.floor(Math.random() * 450) + 120,
-        isAiChecked: true
+        open: parseFloat(base.toFixed(decimals)),
+        high: parseFloat(base.toFixed(decimals)),
+        low: parseFloat(base.toFixed(decimals)),
+        close: parseFloat(base.toFixed(decimals)),
+        volume: 1,
+        isAiChecked: false
       };
     });
   };
@@ -81,8 +72,6 @@ export default function App() {
     low: 2374.27,
     timestamp: Date.now()
   });
-
-  const [priceHistory, setPriceHistory] = useState<number[]>(Array.from({ length: 15 }, () => 2375 + Math.random() * 10));
 
   // Initialize 18 historical candlestick chart blocks
   const [candles, setCandles] = useState<CandleData[]>(() => generateCandles('XAU/USD'));
@@ -154,7 +143,6 @@ export default function App() {
       try {
         const data = await fetchMarketData({ data: { pair: selectedPair } });
         setPriceData(data);
-        setPriceHistory((prev: number[]) => [...prev.slice(1), data.price]);
         updateCandles(data.price);
       } catch (err) {
         // network blip — skip this tick silently
