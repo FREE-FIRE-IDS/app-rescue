@@ -201,9 +201,6 @@ export default function App() {
         return next;
       });
       
-      if (Math.round(next) % 25 === 0) {
-        playBeep(650 + Math.round(next) * 4, 'sine', 0.04);
-      }
     }, intervalTime);
 
     return () => clearInterval(loadingInterval);
