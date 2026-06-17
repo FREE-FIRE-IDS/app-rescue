@@ -497,8 +497,8 @@ export default function App() {
                   </div>
                   <div>[MATH] CALCULATING HISTORICAL VOLATILITY SPECTRA: SUCCESS</div>
                   {introProgress > 25 && <div>[SPEED] CURRENT DATA STREAM LATENCY: 1.2ms (ZERO-DELAY)</div>}
-                  {introProgress > 55 && <div>[CONFLUENCE] ALL 500 MATHEMATICAL ATTRIBUTES MAPPED</div>}
-                  {introProgress > 80 && <div>[ENGINE] SYNCHRONIZING WITH BROKER LIQUIDITY NODES</div>}
+                  {introProgress > 55 && <div>[CONFLUENCE] 16 ADVANCED PHASES LOADED</div>}
+                  {introProgress > 80 && <div>[ENGINE] LIVE MARKET INDICATOR STACK READY</div>}
                   {introProgress > 95 && <div>[PORTAL] BOOTING OFFICIAL OPERATOR DISPLAY...</div>}
                 </div>
 
@@ -748,7 +748,7 @@ export default function App() {
                   
                   {/* Hexagon tech grid decoration */}
                   <div className="absolute top-3 right-3 flex items-center space-x-1 text-[9px] font-mono text-[#00ff66]/50 bg-black/40 px-2 py-0.5 border border-[#00ff66]/10 rounded">
-                    <span>ZERO-LATENCY DIRECT STREAM</span>
+                    <span>LIVE MARKET DATA STREAM</span>
                   </div>
 
                   <h3 className="text-sm font-bold uppercase tracking-widest text-[#00ff66]/80 mb-4 flex items-center space-x-2">
@@ -795,17 +795,11 @@ export default function App() {
                                 <span className="text-5xl font-black text-[#00ff66] tracking-widest mt-2 glow-green">CALL</span>
                                 <span className="text-xs text-[#00ff66]/80 font-mono mt-1 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">UP / BUY CONTRACT</span>
                               </div>
-                            ) : activeSignal.direction === 'PUT' ? (
+                            ) : (
                               <div className="z-10 flex flex-col items-center">
                                 <TrendingDown className="w-14 h-14 text-red-500 animate-bounce glow-red" />
                                 <span className="text-4xl md:text-5xl font-black text-red-500 tracking-widest mt-2 glow-red">PUT</span>
                                 <span className="text-xs text-red-400 font-mono mt-1 bg-rose-950/40 px-2 py-0.5 rounded border border-rose-500/30 font-bold">DOWN / SELL CONTRACT</span>
-                              </div>
-                            ) : (
-                              <div className="z-10 flex flex-col items-center">
-                                <Clock className="w-14 h-14 text-yellow-500 animate-pulse glow-yellow" />
-                                <span className="text-4xl md:text-5xl font-black text-yellow-500 tracking-widest mt-2 glow-yellow">WAIT</span>
-                                <span className="text-xs text-yellow-450 font-mono mt-1 bg-yellow-950/40 px-2 py-0.5 rounded border border-yellow-500/30 font-bold">HOLD / FLAT ZONE</span>
                               </div>
                             )}
                           </div>
@@ -834,19 +828,18 @@ export default function App() {
                         </div>
 
                         {/* DIRECT LIVE TRADE ACTION BANNER */}
-                        {activeSignal.direction !== 'WAIT' ? (
-                          <div className="p-6 bg-emerald-950/40 border-2 border-[#00ff66] rounded-lg text-center font-mono relative overflow-hidden shadow-[0_0_15px_rgba(0,255,102,0.15)]">
+                        <div className="p-6 bg-emerald-950/40 border-2 border-[#00ff66] rounded-lg text-center font-mono relative overflow-hidden shadow-[0_0_15px_rgba(0,255,102,0.15)]">
                             <div className="absolute top-0 left-0 w-full h-full bg-[#00ff66]/5 animate-pulse pointer-events-none" />
                             <div className="absolute top-1 right-2 text-[8px] text-[#00ff66]/40 font-bold tracking-widest">{selectedPair} REALTIME MARKET</div>
                             
                             <Zap className="w-7 h-7 text-[#00ff66] mx-auto mb-2 animate-bounce flex shrink-0" />
                             
                             <h4 className="text-sm font-black text-white uppercase tracking-widest">
-                              ⚡ EXECUTE {activeSignal.direction} TRADE IMMEDIATELY ⚡
+                              ⚡ {activeSignal.direction} SIGNAL READY ⚡
                             </h4>
                             
                             <p className="text-xs text-[#00ff66]/90 font-mono mt-2 max-w-lg mx-auto leading-relaxed">
-                              Open your Quotex or broker tab immediately and execute the trade at the active entry price of <span className="text-white font-bold">${activeSignal.entryPrice ? activeSignal.entryPrice.toFixed(selectedPair.includes('EUR') || selectedPair.includes('GBP') ? 5 : 2) : activeSignal.priceAtSignal.toFixed(selectedPair.includes('EUR') || selectedPair.includes('GBP') ? 5 : 2)}</span>.
+                              Entry reference from the live feed: <span className="text-white font-bold">${activeSignal.entryPrice ? activeSignal.entryPrice.toFixed(selectedPair.includes('EUR') || selectedPair.includes('GBP') ? 5 : 2) : activeSignal.priceAtSignal.toFixed(selectedPair.includes('EUR') || selectedPair.includes('GBP') ? 5 : 2)}</span>.
                             </p>
 
                             <div className="mt-4 flex justify-center">
@@ -856,29 +849,6 @@ export default function App() {
                               </span>
                             </div>
                           </div>
-                        ) : (
-                          <div className="p-6 bg-yellow-950/45 border-2 border-yellow-500 rounded-lg text-center font-mono relative overflow-hidden shadow-[0_0_15px_rgba(234,179,8,0.15)]">
-                            <div className="absolute top-0 left-0 w-full h-full bg-yellow-500/5 animate-pulse pointer-events-none" />
-                            <div className="absolute top-1 right-2 text-[8px] text-yellow-500/40 font-bold tracking-widest">{selectedPair} SECURE MATRIX</div>
-                            
-                            <Clock className="w-7 h-7 text-yellow-400 mx-auto mb-2 animate-pulse flex shrink-0" />
-                            
-                            <h4 className="text-sm font-black text-white uppercase tracking-widest">
-                              ⚠️ SIDEWAYS MARKET FLAT ZONE - STAY OUT ⚠️
-                            </h4>
-                            
-                            <p className="text-xs text-yellow-300/95 font-mono mt-2 max-w-lg mx-auto leading-relaxed">
-                              The AI has detected sideways compression. Safest action is to WAIT for a clear breakout. Avoid entering trades on random flat ranges.
-                            </p>
-
-                            <div className="mt-4 flex justify-center">
-                              <span className="text-[10px] font-bold bg-yellow-500 text-black px-3 py-1 rounded inline-flex items-center gap-1.5 animate-pulse uppercase tracking-wider font-bold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#eab308] animate-ping"></span>
-                                MARKET SIDEWAYS WAITING
-                              </span>
-                            </div>
-                          </div>
-                        )}
 
                       </motion.div>
                     )}
