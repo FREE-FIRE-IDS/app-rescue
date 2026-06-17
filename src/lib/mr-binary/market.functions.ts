@@ -438,12 +438,12 @@ export const generateSignalFn = createServerFn({ method: "POST" })
           if (match) {
             const parsed = JSON.parse(match[0]);
             if (parsed.direction === "CALL" || parsed.direction === "PUT") {
-              aiVerdict = parsed.direction;
+              aiVerdict = parsed.direction as Direction;
               aiNote = String(parsed.reason ?? "").slice(0, 140);
               const aiConf = clamp(Math.round(Number(parsed.confidence) || 88), 82, 99);
               if (aiVerdict === direction) confidence = clamp(Math.round((confidence + aiConf) / 2) + 2, 88, 99);
               else if (aiConf >= 92 && alignment < 0.52) {
-                direction = aiVerdict;
+                direction = aiVerdict as Direction;
                 confidence = clamp(aiConf - 2, 88, 97);
               } else {
                 confidence = clamp(confidence - 2, 88, 97);
