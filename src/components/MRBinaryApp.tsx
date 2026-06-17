@@ -201,8 +201,8 @@ export default function App() {
         return next;
       });
       
-      if (Math.random() > 0.7) {
-        playBeep(300 + Math.random() * 800, 'sine', 0.04);
+      if (Math.round(next) % 25 === 0) {
+        playBeep(650 + Math.round(next) * 4, 'sine', 0.04);
       }
     }, intervalTime);
 
