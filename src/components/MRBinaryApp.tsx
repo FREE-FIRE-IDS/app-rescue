@@ -1,23 +1,15 @@
-import React, { useState, useEffect, useRef, FormEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Lock, 
   User, 
   Activity, 
-  ShieldCheck, 
-  Cpu, 
   TrendingUp, 
   TrendingDown, 
   Zap, 
-  RefreshCw, 
   Clock, 
-  Play, 
   AlertTriangle,
-  Info,
-  CheckCircle2,
-  ListRestart,
   Sliders,
-  Settings
 } from 'lucide-react';
 import { MarketPriceData, SignalResponse, ScreenState, TimeFrameOption, CandleData } from '@/lib/mr-binary/types';
 import { useServerFn } from '@tanstack/react-start';
@@ -30,10 +22,8 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [apiError, setApiError] = useState('');
-  const [settings, setSettings] = useState({
+  const [settings] = useState({
     delaySeconds: 5,
-    allowWaitSignal: false,  // Disabled — operator wants only CALL / PUT (no WAIT)
-    aiMindsetFocus: 98
   });
 
   // Server-function hooks for live market data + signal computation
@@ -42,26 +32,19 @@ export default function App() {
   
   const [selectedPair, setSelectedPair] = useState<string>('XAU/USD');
 
-  // Helper for dynamic multi-symbol candle data seeding
+  // Deterministic candle placeholders only until the live feed starts updating them.
   const generateCandles = (symbol: string): CandleData[] => {
-    let base = symbol === 'BTC/USD' ? 67250.00 : symbol === 'USD/JPY' ? 157.42 : symbol === 'GBP/USD' ? 1.2715 : symbol === 'EUR/USD' ? 1.0824 : 2378.45;
+    const base = symbol === 'BTC/USD' ? 67250.00 : symbol === 'USD/JPY' ? 157.42 : symbol === 'GBP/USD' ? 1.2715 : symbol === 'EUR/USD' ? 1.0824 : 2378.45;
     const decimals = symbol.includes('EUR') || symbol.includes('GBP') ? 5 : 2;
-    const spread = symbol === 'BTC/USD' ? 250.00 : symbol === 'USD/JPY' ? 0.35 : symbol.includes('USD/') ? 0.0020 : 4.0;
-    
     return Array.from({ length: 18 }).map((_, i) => {
-      const open = base + (Math.random() - 0.48) * (spread / 2);
-      const close = open + (Math.random() - 0.5) * spread;
-      const high = Math.max(open, close) + Math.random() * (spread / 4);
-      const low = Math.min(open, close) - Math.random() * (spread / 4);
-      base = close;
       return {
         time: `${18 - i}m ago`,
-        open: parseFloat(open.toFixed(decimals)),
-        high: parseFloat(high.toFixed(decimals)),
-        low: parseFloat(low.toFixed(decimals)),
-        close: parseFloat(close.toFixed(decimals)),
-        volume: Math.floor(Math.random() * 450) + 120,
-        isAiChecked: true
+        open: parseFloat(base.toFixed(decimals)),
+        high: parseFloat(base.toFixed(decimals)),
+        low: parseFloat(base.toFixed(decimals)),
+        close: parseFloat(base.toFixed(decimals)),
+        volume: 1,
+        isAiChecked: false
       };
     });
   };
@@ -82,10 +65,8 @@ export default function App() {
     timestamp: Date.now()
   });
 
-  const [priceHistory, setPriceHistory] = useState<number[]>(Array.from({ length: 15 }, () => 2375 + Math.random() * 10));
-
   // Initialize 18 historical candlestick chart blocks
-  const [candles, setCandles] = useState<CandleData[]>(() => generateCandles('XAU/USD'));
+  const [, setCandles] = useState<CandleData[]>(() => generateCandles('XAU/USD'));
 
   const updateCandles = (newPrice: number) => {
     setCandles(prev => {
@@ -154,7 +135,6 @@ export default function App() {
       try {
         const data = await fetchMarketData({ data: { pair: selectedPair } });
         setPriceData(data);
-        setPriceHistory((prev: number[]) => [...prev.slice(1), data.price]);
         updateCandles(data.price);
       } catch (err) {
         // network blip — skip this tick silently
@@ -221,9 +201,6 @@ export default function App() {
         return next;
       });
       
-      if (Math.random() > 0.7) {
-        playBeep(300 + Math.random() * 800, 'sine', 0.04);
-      }
     }, intervalTime);
 
     return () => clearInterval(loadingInterval);
@@ -509,8 +486,8 @@ export default function App() {
                   </div>
                   <div>[MATH] CALCULATING HISTORICAL VOLATILITY SPECTRA: SUCCESS</div>
                   {introProgress > 25 && <div>[SPEED] CURRENT DATA STREAM LATENCY: 1.2ms (ZERO-DELAY)</div>}
-                  {introProgress > 55 && <div>[CONFLUENCE] ALL 500 MATHEMATICAL ATTRIBUTES MAPPED</div>}
-                  {introProgress > 80 && <div>[ENGINE] SYNCHRONIZING WITH BROKER LIQUIDITY NODES</div>}
+                  {introProgress > 55 && <div>[CONFLUENCE] 16 ADVANCED PHASES LOADED</div>}
+                  {introProgress > 80 && <div>[ENGINE] LIVE MARKET INDICATOR STACK READY</div>}
                   {introProgress > 95 && <div>[PORTAL] BOOTING OFFICIAL OPERATOR DISPLAY...</div>}
                 </div>
 
@@ -760,7 +737,7 @@ export default function App() {
                   
                   {/* Hexagon tech grid decoration */}
                   <div className="absolute top-3 right-3 flex items-center space-x-1 text-[9px] font-mono text-[#00ff66]/50 bg-black/40 px-2 py-0.5 border border-[#00ff66]/10 rounded">
-                    <span>ZERO-LATENCY DIRECT STREAM</span>
+                    <span>LIVE MARKET DATA STREAM</span>
                   </div>
 
                   <h3 className="text-sm font-bold uppercase tracking-widest text-[#00ff66]/80 mb-4 flex items-center space-x-2">
@@ -797,7 +774,7 @@ export default function App() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                           <div className="text-center p-6 rounded-lg bg-black/60 border border-[#00ff66]/20 flex flex-col items-center relative overflow-hidden">
                             {/* Glow indicator backing */}
-                            <div className={`absolute -inset-10 opacity-10 rounded-full blur-2xl ${activeSignal.direction === 'CALL' ? 'bg-[#00ff66]' : activeSignal.direction === 'PUT' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                            <div className={`absolute -inset-10 opacity-10 rounded-full blur-2xl ${activeSignal.direction === 'CALL' ? 'bg-[#00ff66]' : 'bg-red-500'}`} />
 
                             <span className="text-[10px] font-mono text-[#00ff66]/50 uppercase tracking-widest mb-1 z-10 font-bold">RECOMMENDED ACTION</span>
                             
@@ -807,17 +784,11 @@ export default function App() {
                                 <span className="text-5xl font-black text-[#00ff66] tracking-widest mt-2 glow-green">CALL</span>
                                 <span className="text-xs text-[#00ff66]/80 font-mono mt-1 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">UP / BUY CONTRACT</span>
                               </div>
-                            ) : activeSignal.direction === 'PUT' ? (
+                            ) : (
                               <div className="z-10 flex flex-col items-center">
                                 <TrendingDown className="w-14 h-14 text-red-500 animate-bounce glow-red" />
                                 <span className="text-4xl md:text-5xl font-black text-red-500 tracking-widest mt-2 glow-red">PUT</span>
                                 <span className="text-xs text-red-400 font-mono mt-1 bg-rose-950/40 px-2 py-0.5 rounded border border-rose-500/30 font-bold">DOWN / SELL CONTRACT</span>
-                              </div>
-                            ) : (
-                              <div className="z-10 flex flex-col items-center">
-                                <Clock className="w-14 h-14 text-yellow-500 animate-pulse glow-yellow" />
-                                <span className="text-4xl md:text-5xl font-black text-yellow-500 tracking-widest mt-2 glow-yellow">WAIT</span>
-                                <span className="text-xs text-yellow-450 font-mono mt-1 bg-yellow-950/40 px-2 py-0.5 rounded border border-yellow-500/30 font-bold">HOLD / FLAT ZONE</span>
                               </div>
                             )}
                           </div>
@@ -846,19 +817,18 @@ export default function App() {
                         </div>
 
                         {/* DIRECT LIVE TRADE ACTION BANNER */}
-                        {activeSignal.direction !== 'WAIT' ? (
-                          <div className="p-6 bg-emerald-950/40 border-2 border-[#00ff66] rounded-lg text-center font-mono relative overflow-hidden shadow-[0_0_15px_rgba(0,255,102,0.15)]">
+                        <div className="p-6 bg-emerald-950/40 border-2 border-[#00ff66] rounded-lg text-center font-mono relative overflow-hidden shadow-[0_0_15px_rgba(0,255,102,0.15)]">
                             <div className="absolute top-0 left-0 w-full h-full bg-[#00ff66]/5 animate-pulse pointer-events-none" />
                             <div className="absolute top-1 right-2 text-[8px] text-[#00ff66]/40 font-bold tracking-widest">{selectedPair} REALTIME MARKET</div>
                             
                             <Zap className="w-7 h-7 text-[#00ff66] mx-auto mb-2 animate-bounce flex shrink-0" />
                             
                             <h4 className="text-sm font-black text-white uppercase tracking-widest">
-                              ⚡ EXECUTE {activeSignal.direction} TRADE IMMEDIATELY ⚡
+                              ⚡ {activeSignal.direction} SIGNAL READY ⚡
                             </h4>
                             
                             <p className="text-xs text-[#00ff66]/90 font-mono mt-2 max-w-lg mx-auto leading-relaxed">
-                              Open your Quotex or broker tab immediately and execute the trade at the active entry price of <span className="text-white font-bold">${activeSignal.entryPrice ? activeSignal.entryPrice.toFixed(selectedPair.includes('EUR') || selectedPair.includes('GBP') ? 5 : 2) : activeSignal.priceAtSignal.toFixed(selectedPair.includes('EUR') || selectedPair.includes('GBP') ? 5 : 2)}</span>.
+                              Entry reference from the live feed: <span className="text-white font-bold">${activeSignal.entryPrice ? activeSignal.entryPrice.toFixed(selectedPair.includes('EUR') || selectedPair.includes('GBP') ? 5 : 2) : activeSignal.priceAtSignal.toFixed(selectedPair.includes('EUR') || selectedPair.includes('GBP') ? 5 : 2)}</span>.
                             </p>
 
                             <div className="mt-4 flex justify-center">
@@ -868,29 +838,6 @@ export default function App() {
                               </span>
                             </div>
                           </div>
-                        ) : (
-                          <div className="p-6 bg-yellow-950/45 border-2 border-yellow-500 rounded-lg text-center font-mono relative overflow-hidden shadow-[0_0_15px_rgba(234,179,8,0.15)]">
-                            <div className="absolute top-0 left-0 w-full h-full bg-yellow-500/5 animate-pulse pointer-events-none" />
-                            <div className="absolute top-1 right-2 text-[8px] text-yellow-500/40 font-bold tracking-widest">{selectedPair} SECURE MATRIX</div>
-                            
-                            <Clock className="w-7 h-7 text-yellow-400 mx-auto mb-2 animate-pulse flex shrink-0" />
-                            
-                            <h4 className="text-sm font-black text-white uppercase tracking-widest">
-                              ⚠️ SIDEWAYS MARKET FLAT ZONE - STAY OUT ⚠️
-                            </h4>
-                            
-                            <p className="text-xs text-yellow-300/95 font-mono mt-2 max-w-lg mx-auto leading-relaxed">
-                              The AI has detected sideways compression. Safest action is to WAIT for a clear breakout. Avoid entering trades on random flat ranges.
-                            </p>
-
-                            <div className="mt-4 flex justify-center">
-                              <span className="text-[10px] font-bold bg-yellow-500 text-black px-3 py-1 rounded inline-flex items-center gap-1.5 animate-pulse uppercase tracking-wider font-bold">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#eab308] animate-ping"></span>
-                                MARKET SIDEWAYS WAITING
-                              </span>
-                            </div>
-                          </div>
-                        )}
 
                       </motion.div>
                     )}
