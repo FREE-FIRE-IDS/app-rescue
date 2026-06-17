@@ -359,7 +359,6 @@ export const generateSignalFn = createServerFn({ method: "POST" })
     const confirmUp = confirmCloses.length >= 50 ? ema(confirmCloses, 21) > ema(confirmCloses, 50) : htfUp;
 
     const P: PhaseRes[] = [];
-    pushPhase(P, `LIVE PRICE FEED ${pair} @ ${price.toFixed(d)} (${candles.length} aligned candles)`, "FEED_LOCKED", 0, 0, 1);
     pushPhase(P, `EMA STACK 9/21/50 = ${ema9v.toFixed(d)} / ${ema21v.toFixed(d)} / ${ema50v.toFixed(d)}`, ema9v > ema21v && ema21v > ema50v ? "BULL_STACK" : ema9v < ema21v && ema21v < ema50v ? "BEAR_STACK" : "MIXED_STACK", ema9v > ema21v && ema21v > ema50v ? 1.45 : ema9v < ema21v && ema21v < ema50v ? -1.45 : ema9v > ema21v ? 0.45 : -0.45, 1.45, 1.25);
     pushPhase(P, `SMA STRUCTURE 5/20/50 = ${sma5v.toFixed(d)} / ${sma20v.toFixed(d)} / ${sma50v.toFixed(d)}`, sma5v > sma20v && sma20v > sma50v ? "SMA_UPTREND" : sma5v < sma20v && sma20v < sma50v ? "SMA_DOWNTREND" : "SMA_TRANSITION", sma5v > sma20v && sma20v > sma50v ? 1.2 : sma5v < sma20v && sma20v < sma50v ? -1.2 : sma5v > sma20v ? 0.35 : -0.35, 1.1, 1.05);
     pushPhase(P, `RSI(14)=${rsi14.toFixed(1)} slope ${(rsi14 - rsiPrev).toFixed(1)}`, rsi14 >= 52 && rsi14 > rsiPrev ? "RSI_BULL_EXPANSION" : rsi14 <= 48 && rsi14 < rsiPrev ? "RSI_BEAR_EXPANSION" : rsi14 > 70 ? "RSI_OVERBOUGHT" : rsi14 < 30 ? "RSI_OVERSOLD" : "RSI_NEUTRAL", rsi14 > 70 ? -0.55 : rsi14 < 30 ? 0.55 : rsi14 >= 52 && rsi14 > rsiPrev ? 1.05 : rsi14 <= 48 && rsi14 < rsiPrev ? -1.05 : rsi14 >= 50 ? 0.25 : -0.25, 1.0, Math.abs(rsi14 - 50) / 18);
@@ -458,8 +457,8 @@ export const generateSignalFn = createServerFn({ method: "POST" })
 
     const isUp = direction === "CALL";
     const phases: PhaseCheck[] = P.map((p, i) => {
-      const aligned = i === 0 || (isUp ? p.vote >= 0 : p.vote <= 0);
-      const phaseAccuracy = i === 0 ? 100 : clamp(Math.round(82 + Math.min(1, p.strength / 1.5) * 14 + (aligned ? 3 : -5)), 76, 99);
+      const aligned = isUp ? p.vote >= 0 : p.vote <= 0;
+      const phaseAccuracy = clamp(Math.round(82 + Math.min(1, p.strength / 1.5) * 14 + (aligned ? 3 : -5)), 76, 99);
       return {
         phase: i + 1,
         indicator: `PHASE ${i + 1}: ${p.label}`,
