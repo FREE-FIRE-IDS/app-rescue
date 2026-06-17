@@ -309,7 +309,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
                 // Disagreement: if AI is very confident, flip; else trim
                 const aiConf = Number(parsed.confidence) || 0;
                 if (aiConf >= 80 && alignment < 0.45) {
-                  direction = aiVerdict;
+                  direction = aiVerdict as "CALL" | "PUT";
                   confidence = Math.max(80, Math.round(aiConf));
                 } else {
                   confidence = Math.max(75, confidence - 6);
