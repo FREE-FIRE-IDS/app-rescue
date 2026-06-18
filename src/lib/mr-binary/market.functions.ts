@@ -581,17 +581,36 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       score += p.vote * p.weight;
       maxScore += Math.abs(p.weight) * 1.8;
     }
-    const rawAlignment = Math.abs(score) / Math.max(maxScore, 1);
+    let rawAlignment = Math.abs(score) / Math.max(maxScore, 1);
     const callVotes = P.filter((p) => p.weight > 0 && p.vote > 0).length;
     const putVotes = P.filter((p) => p.weight > 0 && p.vote < 0).length;
     const consensus = Math.max(callVotes, putVotes) / Math.max(1, callVotes + putVotes);
-    const htfAligned = score >= 0 ? htfUp === true : htfUp === false;
-    const confirmAligned = score >= 0 ? confirmUp === true : confirmUp === false;
+    let direction: Direction = score >= 0 ? "CALL" : "PUT";
+    const liveProbe = compactEdgeProbe(candles);
+    if (liveProbe.direction !== direction && liveProbe.edge > rawAlignment + 0.08) direction = liveProbe.direction;
+    const validation = walkForwardValidation(candles, direction, 1);
+    const validationVote = direction === "CALL" ? 1 : -1;
+    pushPhase(P, `Walk-forward ${validation.tested} candle replay accuracy ${(validation.accuracy * 100).toFixed(1)}%`, validation.accuracy >= 0.8 ? "REPLAY_EDGE_CONFIRMED" : "REPLAY_EDGE_REJECTED", validationVote * (validation.accuracy >= 0.8 ? 1.65 : -1.1), 1.8, validation.accuracy * 1.5);
+    pushPhase(P, `Same-side replay accuracy ${(validation.sameDirectionAccuracy * 100).toFixed(1)}%`, validation.sameDirectionAccuracy >= 0.8 ? "DIRECTION_EDGE_CONFIRMED" : "DIRECTION_EDGE_WEAK", validationVote * (validation.sameDirectionAccuracy >= 0.8 ? 1.55 : -1.15), 1.65, validation.sameDirectionAccuracy * 1.5);
+    pushPhase(P, `Live edge consistency ${(validation.edgeConsistency * 100).toFixed(1)}%`, validation.edgeConsistency >= 0.48 ? "EDGE_STABLE" : "EDGE_UNSTABLE", validationVote * (validation.edgeConsistency >= 0.48 ? 1.15 : -0.95), 1.25, validation.edgeConsistency * 1.5);
+    score = 0;
+    maxScore = 0;
+    for (const p of P) {
+      score += p.vote * p.weight;
+      maxScore += Math.abs(p.weight) * 1.8;
+    }
+    rawAlignment = Math.abs(score) / Math.max(maxScore, 1);
+    direction = score >= 0 ? "CALL" : "PUT";
+    const htfAligned = direction === "CALL" ? htfUp === true : htfUp === false;
+    const confirmAligned = direction === "CALL" ? confirmUp === true : confirmUp === false;
     const volatilityQuality = atrPct > 0.00005 && atrPct < (pair === "BTC/USD" ? 0.025 : 0.012);
     const qualityBoost = (htfAligned ? 0.08 : -0.06) + (confirmAligned ? 0.06 : -0.04) + (volatilityQuality ? 0.04 : -0.05) + (consensus >= 0.68 ? 0.06 : -0.03);
     const alignment = clamp(rawAlignment + qualityBoost, 0, 1);
-    let direction: Direction = score >= 0 ? "CALL" : "PUT";
-    let confidence = clamp(Math.round(88 + alignment * 11), 88, 99);
+    const honestAccuracy = Math.min(validation.accuracy || 0, validation.sameDirectionAccuracy || 0);
+    if (!validation.validated || honestAccuracy < 0.8 || alignment < 0.42 || consensus < 0.62 || !htfAligned || !confirmAligned) {
+      throw new Error(`No honest 80%+ edge right now: replay ${(validation.accuracy * 100).toFixed(1)}%, same-side ${(validation.sameDirectionAccuracy * 100).toFixed(1)}%, consensus ${(consensus * 100).toFixed(0)}%, MTF ${htfAligned && confirmAligned ? "aligned" : "mixed"}. Try again when live market structure is cleaner.`);
+    }
+    let confidence = clamp(Math.round(80 + honestAccuracy * 12 + alignment * 7), 80, 99);
 
     let aiVerdict: Direction | "UNKNOWN" = "UNKNOWN";
     let aiNote = "";
