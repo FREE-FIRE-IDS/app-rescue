@@ -588,6 +588,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
     let direction: Direction = score >= 0 ? "CALL" : "PUT";
     const liveProbe = compactEdgeProbe(candles);
     if (liveProbe.direction !== direction && liveProbe.edge > rawAlignment + 0.08) direction = liveProbe.direction;
+    const validatedDirection = direction;
     const validation = walkForwardValidation(candles, direction, 1);
     const validationVote = direction === "CALL" ? 1 : -1;
     pushPhase(P, `Walk-forward ${validation.tested} candle replay accuracy ${(validation.accuracy * 100).toFixed(1)}%`, validation.accuracy >= 0.8 ? "REPLAY_EDGE_CONFIRMED" : "REPLAY_EDGE_REJECTED", validationVote * (validation.accuracy >= 0.8 ? 1.65 : -1.1), 1.8, validation.accuracy * 1.5);
@@ -601,6 +602,9 @@ export const generateSignalFn = createServerFn({ method: "POST" })
     }
     rawAlignment = Math.abs(score) / Math.max(maxScore, 1);
     direction = score >= 0 ? "CALL" : "PUT";
+    if (direction !== validatedDirection) {
+      throw new Error("No stable 80%+ edge right now: live score changed after replay validation.");
+    }
     const htfAligned = direction === "CALL" ? htfUp === true : htfUp === false;
     const confirmAligned = direction === "CALL" ? confirmUp === true : confirmUp === false;
     const volatilityQuality = atrPct > 0.00005 && atrPct < (pair === "BTC/USD" ? 0.025 : 0.012);
@@ -614,6 +618,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
 
     let aiVerdict: Direction | "UNKNOWN" = "UNKNOWN";
     let aiNote = "";
+    let aiRiskRejected = false;
     try {
       const key = process.env.LOVABLE_API_KEY;
       if (key) {
@@ -662,7 +667,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
               aiNote = String(parsed.reason ?? "").slice(0, 140);
               const aiConf = clamp(Math.round(Number(parsed.confidence) || 88), 82, 99);
               if (aiVerdict === direction) confidence = clamp(Math.round((confidence + aiConf) / 2) + 2, 80, 99);
-              else if (aiConf >= 90) throw new Error("AI risk filter disagreed with the validated technical edge.");
+              else if (aiConf >= 90) aiRiskRejected = true;
               else confidence = clamp(confidence - 3, 80, 97);
             }
           }
@@ -672,6 +677,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       // AI layer is an optional second opinion; technical engine remains primary.
     }
 
+    if (aiRiskRejected) throw new Error("No honest 80%+ edge right now: AI risk filter disagreed with the validated technical edge.");
     if (confidence < 80) throw new Error("No honest 80%+ confidence edge is available right now.");
 
     const isUp = direction === "CALL";
