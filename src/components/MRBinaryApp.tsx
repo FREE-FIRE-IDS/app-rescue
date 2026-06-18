@@ -103,13 +103,17 @@ export default function App() {
   const [selectedTime, setSelectedTime] = useState<TimeFrameOption>('1 Min');
   const [isGeneratingSignal, setIsGeneratingSignal] = useState(false);
   const [currentVerificationPhase, setCurrentVerificationPhase] = useState(0);
+  const [totalVerificationPhases, setTotalVerificationPhases] = useState(150);
   const [currentCheckingIndicator, setCurrentCheckingIndicator] = useState('');
   const [activeSignal, setActiveSignal] = useState<SignalResponse | null>(null);
 
   // Audio indicators simulated visually, but let's have a nice sound frequency generator using WebAudio if allowed
   const playBeep = (freq: number, type: 'sine' | 'square' | 'sawtooth' = 'sine', duration: number = 0.08) => {
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioWindow = window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+      const AudioContextCtor = audioWindow.AudioContext || audioWindow.webkitAudioContext;
+      if (!AudioContextCtor) return;
+      const audioCtx = new AudioContextCtor();
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
       
@@ -213,6 +217,7 @@ export default function App() {
     setActiveSignal(null);
     setApiError('');
     setCurrentVerificationPhase(0);
+    setTotalVerificationPhases(150);
     setCurrentCheckingIndicator('ENGAGING AI COGNITIVE MATRIX...');
 
     playBeep(600, 'sawtooth', 0.1);
@@ -224,7 +229,8 @@ export default function App() {
 
       // If calculation delay is configured, perform step-by-step visual scan representation
       if (settings.delaySeconds > 0) {
-        const totalPhases = signal.phases?.length || 16;
+        const totalPhases = signal.phases?.length || 150;
+        setTotalVerificationPhases(totalPhases);
         const delayPerPhase = (settings.delaySeconds * 1000) / totalPhases;
         
         for (let i = 0; i < totalPhases; i++) {
@@ -239,9 +245,9 @@ export default function App() {
       setIsGeneratingSignal(false);
       playBeep(signal.direction === 'CALL' ? 1200 : signal.direction === 'PUT' ? 400 : 800, 'square', 0.35);
 
-    } catch (e: any) {
+    } catch (e: unknown) {
       setIsGeneratingSignal(false);
-      setApiError(e.message || "Failed to establish a secure Gold market intelligence tunnel.");
+      setApiError(e instanceof Error ? e.message : "Failed to establish a secure Gold market intelligence tunnel.");
     }
   };
 
@@ -485,9 +491,9 @@ export default function App() {
                     <span>[CONNECTION] DIRECT XAU/USD OTC SPOT FEED SYNCHRONIZED...</span>
                   </div>
                   <div>[MATH] CALCULATING HISTORICAL VOLATILITY SPECTRA: SUCCESS</div>
-                  {introProgress > 25 && <div>[SPEED] CURRENT DATA STREAM LATENCY: 1.2ms (ZERO-DELAY)</div>}
-                  {introProgress > 55 && <div>[CONFLUENCE] 16 ADVANCED PHASES LOADED</div>}
-                  {introProgress > 80 && <div>[ENGINE] LIVE MARKET INDICATOR STACK READY</div>}
+                  {introProgress > 25 && <div>[SPEED] LIVE FEED LATENCY CHECK: SYNCHRONIZED</div>}
+                  {introProgress > 55 && <div>[CONFLUENCE] 150 ADVANCED MARKET PHASES LOADED</div>}
+                  {introProgress > 80 && <div>[ENGINE] DEEP AI MARKET DETECTOR READY</div>}
                   {introProgress > 95 && <div>[PORTAL] BOOTING OFFICIAL OPERATOR DISPLAY...</div>}
                 </div>
 
@@ -676,7 +682,7 @@ export default function App() {
                       </div>
                       
                       <span className="text-[11px] font-mono font-bold tracking-widest text-[#00ff66] text-center uppercase animate-pulse">
-                        {currentVerificationPhase > 0 ? `PHASE ${currentVerificationPhase}/16 ACTIVE` : 'ENGAGING CONFLUENCE ENGINES...'}
+                        {currentVerificationPhase > 0 ? `PHASE ${currentVerificationPhase}/${totalVerificationPhases} ACTIVE` : 'ENGAGING CONFLUENCE ENGINES...'}
                       </span>
                       <span className="text-[9px] font-mono text-white/70 block mt-1.5 text-center leading-tight">
                         {currentCheckingIndicator || 'Calculating live spot indexes...'}
@@ -686,7 +692,7 @@ export default function App() {
                         <div className="w-full bg-black/60 h-1.5 rounded overflow-hidden mt-3 max-w-[200px] border border-[#00ff66]/10">
                           <div 
                             className="bg-[#00ff66] h-full transition-all duration-150" 
-                            style={{ width: `${(currentVerificationPhase / 16) * 100}%` }}
+                            style={{ width: `${(currentVerificationPhase / totalVerificationPhases) * 100}%` }}
                           />
                         </div>
                       )}
