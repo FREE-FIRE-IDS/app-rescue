@@ -395,6 +395,84 @@ export const generateSignalFn = createServerFn({ method: "POST" })
     pushPhase(P, `CANDLE+VOLUME body=${(bodyPct * 100).toFixed(0)}%ATR vol=x${volSpike.toFixed(2)} wicks T/B=${wickTop.toFixed(2)}/${wickBottom.toFixed(2)}`, bullCandle && wickBottom >= wickTop ? "BULL_REJECTION_VOLUME" : !bullCandle && wickTop >= wickBottom ? "BEAR_REJECTION_VOLUME" : bullCandle ? "BULL_CANDLE" : "BEAR_CANDLE", (bullCandle ? 1 : -1) * clamp(0.35 + bodyPct * 0.45 + (volSpike > 1.2 ? 0.25 : 0), 0.35, 1.25), 0.9, bodyPct + Math.max(0, volSpike - 1));
     pushPhase(P, `RSI/PRICE DIVERGENCE scan`, div.bullish ? "BULLISH_DIVERGENCE" : div.bearish ? "BEARISH_DIVERGENCE" : "NO_DIVERGENCE", div.bullish ? 1.05 : div.bearish ? -1.05 : 0, 0.9, div.bullish || div.bearish ? 1 : 0);
 
+    const emaPeriods = [3, 5, 8, 9, 10, 12, 13, 15, 18, 21, 24, 26, 30, 34, 40, 45, 50, 55, 60, 75];
+    for (const period of emaPeriods) {
+      const value = ema(closes, period);
+      const slope = value - ema(closes.slice(0, -1), period);
+      const vote = price >= value ? clamp(0.35 + Math.abs(price - value) / Math.max(atr14 * 1.2, 0.00001) + (slope > 0 ? 0.2 : -0.05), 0.25, 1.25) : -clamp(0.35 + Math.abs(price - value) / Math.max(atr14 * 1.2, 0.00001) + (slope < 0 ? 0.2 : -0.05), 0.25, 1.25);
+      pushPhase(P, `EMA-${period} adaptive trend ${value.toFixed(d)} slope=${slope.toFixed(d)}`, vote > 0 ? `EMA_${period}_BULL` : `EMA_${period}_BEAR`, vote, 0.38 + Math.min(period, 75) / 260, Math.abs(vote));
+    }
+
+    const smaPeriods = [4, 6, 8, 10, 12, 14, 16, 18, 22, 25, 28, 32, 36, 40, 44, 48, 55, 65, 80, 100];
+    for (const period of smaPeriods) {
+      const value = sma(closes, period);
+      const prevValue = sma(closes.slice(0, -1), period);
+      const vote = price >= value ? clamp(0.28 + Math.abs(price - value) / Math.max(atr14 * 1.5, 0.00001) + (value >= prevValue ? 0.18 : -0.04), 0.2, 1.15) : -clamp(0.28 + Math.abs(price - value) / Math.max(atr14 * 1.5, 0.00001) + (value <= prevValue ? 0.18 : -0.04), 0.2, 1.15);
+      pushPhase(P, `SMA-${period} baseline ${value.toFixed(d)} drift=${(value - prevValue).toFixed(d)}`, vote > 0 ? `SMA_${period}_CALL_BIAS` : `SMA_${period}_PUT_BIAS`, vote, 0.34 + Math.min(period, 100) / 360, Math.abs(vote));
+    }
+
+    const rsiPeriods = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 21, 24, 28, 32, 36, 42];
+    for (const period of rsiPeriods) {
+      const series = rsiSeries(closes, period);
+      const value = last(series, 50);
+      const prev = series[series.length - 2] ?? value;
+      const overextended = value >= 76 || value <= 24;
+      const vote = overextended ? (value <= 24 ? 0.75 : -0.75) : value >= 52 ? clamp((value - 50) / 18 + (value > prev ? 0.18 : -0.04), 0.18, 1.12) : -clamp((50 - value) / 18 + (value < prev ? 0.18 : -0.04), 0.18, 1.12);
+      pushPhase(P, `RSI-${period} value=${value.toFixed(1)} delta=${(value - prev).toFixed(1)}`, vote > 0 ? `RSI_${period}_CALL_FLOW` : `RSI_${period}_PUT_FLOW`, vote, 0.34 + Math.min(period, 42) / 150, Math.abs(vote));
+    }
+
+    const momentumPeriods = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 50];
+    for (const period of momentumPeriods) {
+      const value = roc(closes, period);
+      const normalized = value / Math.max(atr14, 0.00001);
+      const vote = normalized >= 0 ? clamp(0.22 + Math.abs(normalized) * 0.22, 0.18, 1.2) : -clamp(0.22 + Math.abs(normalized) * 0.22, 0.18, 1.2);
+      pushPhase(P, `${period}-bar momentum impulse=${value.toFixed(d)} normalized=${normalized.toFixed(2)}`, vote > 0 ? `MOM_${period}_UP_IMPULSE` : `MOM_${period}_DOWN_IMPULSE`, vote, 0.32 + Math.min(period, 50) / 190, Math.abs(vote));
+    }
+
+    const rangePeriods = [6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 48, 55, 65];
+    for (const period of rangePeriods) {
+      const pos = rangePosition(price, highs, lows, period);
+      const vote = pos >= 0.58 ? clamp((pos - 0.5) * 2, 0.18, 1.1) : pos <= 0.42 ? -clamp((0.5 - pos) * 2, 0.18, 1.1) : price >= previousClose ? 0.12 : -0.12;
+      pushPhase(P, `${period}-bar range location ${(pos * 100).toFixed(0)}%`, vote > 0 ? `RANGE_${period}_UPPER_CONTROL` : `RANGE_${period}_LOWER_CONTROL`, vote, 0.28 + Math.min(period, 65) / 240, Math.abs(vote));
+    }
+
+    const volatilityPeriods = [8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 50, 60];
+    for (const period of volatilityPeriods) {
+      const sigma = stdDev(closes, period);
+      const slope = regressionSlope(closes, Math.min(period, 28));
+      const expansion = sigma / Math.max(atr14, 0.00001);
+      const vote = slope >= 0 ? clamp(0.18 + expansion * 0.12 + Math.abs(slope) / Math.max(atr14, 0.00001) * 0.28, 0.16, 1.05) : -clamp(0.18 + expansion * 0.12 + Math.abs(slope) / Math.max(atr14, 0.00001) * 0.28, 0.16, 1.05);
+      pushPhase(P, `VOL-${period} sigma=${sigma.toFixed(d)} slope=${slope.toFixed(d)}`, vote > 0 ? `VOL_${period}_BULL_EXPANSION` : `VOL_${period}_BEAR_EXPANSION`, vote, 0.3 + Math.min(period, 60) / 260, Math.abs(vote));
+    }
+
+    const recentCandles = candles.slice(-12);
+    recentCandles.forEach((candle, index) => {
+      const localBody = Math.abs(candle.close - candle.open) / Math.max(atr14, 0.00001);
+      const localTop = (candle.high - Math.max(candle.open, candle.close)) / Math.max(atr14, 0.00001);
+      const localBottom = (Math.min(candle.open, candle.close) - candle.low) / Math.max(atr14, 0.00001);
+      const bullish = candle.close >= candle.open;
+      const vote = bullish ? clamp(0.18 + localBody * 0.35 + (localBottom > localTop ? 0.2 : 0), 0.16, 1.05) : -clamp(0.18 + localBody * 0.35 + (localTop > localBottom ? 0.2 : 0), 0.16, 1.05);
+      pushPhase(P, `Candle microstructure -${recentCandles.length - index} body=${localBody.toFixed(2)} wickT/B=${localTop.toFixed(2)}/${localBottom.toFixed(2)}`, vote > 0 ? `CANDLE_${index + 1}_BUY_PRESSURE` : `CANDLE_${index + 1}_SELL_PRESSURE`, vote, 0.26 + index / 80, Math.abs(vote));
+    });
+
+    const mtfChecks = [
+      { label: `${cfg.htf} EMA21/50`, vote: htfUp ? 1.18 : -1.18, strength: 1.1 },
+      { label: `${cfg.htf} regression slope`, vote: htfSlope >= 0 ? 1.08 : -1.08, strength: Math.abs(htfSlope) / Math.max(atr14, 0.00001) },
+      { label: `${cfg.confirm} EMA21/50`, vote: confirmUp ? 1.12 : -1.12, strength: 1.08 },
+      { label: `price vs EMA9`, vote: price >= ema9v ? 0.82 : -0.82, strength: Math.abs(price - ema9v) / Math.max(atr14, 0.00001) },
+      { label: `price vs EMA21`, vote: price >= ema21v ? 0.9 : -0.9, strength: Math.abs(price - ema21v) / Math.max(atr14, 0.00001) },
+      { label: `price vs EMA50`, vote: price >= ema50v ? 1.0 : -1.0, strength: Math.abs(price - ema50v) / Math.max(atr14, 0.00001) },
+      { label: `session high/low midpoint`, vote: price >= (support + resistance) / 2 ? 0.78 : -0.78, strength: Math.abs(price - (support + resistance) / 2) / Math.max(atr14, 0.00001) },
+      { label: `MACD sign confirmation`, vote: m.hist >= 0 ? 1.02 : -1.02, strength: Math.abs(m.hist) / Math.max(atr14, 0.00001) },
+      { label: `ADX directional confirmation`, vote: adx14.plus >= adx14.minus ? 0.98 : -0.98, strength: adx14.adx / 28 },
+      { label: `VWAP final confirmation`, vote: price >= vw ? 0.92 : -0.92, strength: Math.abs(price - vw) / Math.max(atr14, 0.00001) },
+      { label: `last-close continuation`, vote: lastClose >= previousClose ? 0.68 : -0.68, strength: Math.abs(lastClose - previousClose) / Math.max(atr14, 0.00001) },
+      { label: `volume participation`, vote: (bullCandle ? 1 : -1) * clamp(0.35 + Math.max(0, volSpike - 1) * 0.22, 0.3, 0.95), strength: volSpike },
+    ];
+    for (const check of mtfChecks) {
+      pushPhase(P, `Final MTF gate: ${check.label}`, check.vote > 0 ? "MTF_CALL_GATE" : "MTF_PUT_GATE", check.vote, 0.72, check.strength);
+    }
+
     let score = 0;
     let maxScore = 0;
     for (const p of P) {
