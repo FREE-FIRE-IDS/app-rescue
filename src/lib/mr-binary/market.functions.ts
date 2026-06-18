@@ -626,6 +626,9 @@ export const generateSignalFn = createServerFn({ method: "POST" })
           score: +score.toFixed(3),
           alignment: +(alignment * 100).toFixed(1),
           consensus: +(consensus * 100).toFixed(1),
+          replayAccuracy: +(validation.accuracy * 100).toFixed(1),
+          sameDirectionReplayAccuracy: +(validation.sameDirectionAccuracy * 100).toFixed(1),
+          edgeConsistency: +(validation.edgeConsistency * 100).toFixed(1),
           direction,
           indicators: {
             ema9: +ema9v.toFixed(d), ema21: +ema21v.toFixed(d), ema50: +ema50v.toFixed(d),
@@ -658,13 +661,9 @@ export const generateSignalFn = createServerFn({ method: "POST" })
               aiVerdict = parsed.direction as Direction;
               aiNote = String(parsed.reason ?? "").slice(0, 140);
               const aiConf = clamp(Math.round(Number(parsed.confidence) || 88), 82, 99);
-              if (aiVerdict === direction) confidence = clamp(Math.round((confidence + aiConf) / 2) + 2, 88, 99);
-              else if (aiConf >= 92 && alignment < 0.52) {
-                direction = aiVerdict as Direction;
-                confidence = clamp(aiConf - 2, 88, 97);
-              } else {
-                confidence = clamp(confidence - 2, 88, 97);
-              }
+              if (aiVerdict === direction) confidence = clamp(Math.round((confidence + aiConf) / 2) + 2, 80, 99);
+              else if (aiConf >= 90) throw new Error("AI risk filter disagreed with the validated technical edge.");
+              else confidence = clamp(confidence - 3, 80, 97);
             }
           }
         }
@@ -672,6 +671,8 @@ export const generateSignalFn = createServerFn({ method: "POST" })
     } catch {
       // AI layer is an optional second opinion; technical engine remains primary.
     }
+
+    if (confidence < 80) throw new Error("No honest 80%+ confidence edge is available right now.");
 
     const isUp = direction === "CALL";
     const phases: PhaseCheck[] = P.map((p, i) => {
