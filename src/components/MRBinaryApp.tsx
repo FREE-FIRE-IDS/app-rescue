@@ -103,6 +103,7 @@ export default function App() {
   const [selectedTime, setSelectedTime] = useState<TimeFrameOption>('1 Min');
   const [isGeneratingSignal, setIsGeneratingSignal] = useState(false);
   const [currentVerificationPhase, setCurrentVerificationPhase] = useState(0);
+  const [totalVerificationPhases, setTotalVerificationPhases] = useState(150);
   const [currentCheckingIndicator, setCurrentCheckingIndicator] = useState('');
   const [activeSignal, setActiveSignal] = useState<SignalResponse | null>(null);
 
@@ -213,6 +214,7 @@ export default function App() {
     setActiveSignal(null);
     setApiError('');
     setCurrentVerificationPhase(0);
+    setTotalVerificationPhases(150);
     setCurrentCheckingIndicator('ENGAGING AI COGNITIVE MATRIX...');
 
     playBeep(600, 'sawtooth', 0.1);
@@ -224,7 +226,8 @@ export default function App() {
 
       // If calculation delay is configured, perform step-by-step visual scan representation
       if (settings.delaySeconds > 0) {
-        const totalPhases = signal.phases?.length || 16;
+        const totalPhases = signal.phases?.length || 150;
+        setTotalVerificationPhases(totalPhases);
         const delayPerPhase = (settings.delaySeconds * 1000) / totalPhases;
         
         for (let i = 0; i < totalPhases; i++) {
