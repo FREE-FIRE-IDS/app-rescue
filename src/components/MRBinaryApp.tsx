@@ -110,7 +110,10 @@ export default function App() {
   // Audio indicators simulated visually, but let's have a nice sound frequency generator using WebAudio if allowed
   const playBeep = (freq: number, type: 'sine' | 'square' | 'sawtooth' = 'sine', duration: number = 0.08) => {
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioWindow = window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+      const AudioContextCtor = audioWindow.AudioContext || audioWindow.webkitAudioContext;
+      if (!AudioContextCtor) return;
+      const audioCtx = new AudioContextCtor();
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
       
@@ -242,9 +245,9 @@ export default function App() {
       setIsGeneratingSignal(false);
       playBeep(signal.direction === 'CALL' ? 1200 : signal.direction === 'PUT' ? 400 : 800, 'square', 0.35);
 
-    } catch (e: any) {
+    } catch (e: unknown) {
       setIsGeneratingSignal(false);
-      setApiError(e.message || "Failed to establish a secure Gold market intelligence tunnel.");
+      setApiError(e instanceof Error ? e.message : "Failed to establish a secure Gold market intelligence tunnel.");
     }
   };
 
