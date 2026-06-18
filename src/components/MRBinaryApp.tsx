@@ -488,9 +488,9 @@ export default function App() {
                     <span>[CONNECTION] DIRECT XAU/USD OTC SPOT FEED SYNCHRONIZED...</span>
                   </div>
                   <div>[MATH] CALCULATING HISTORICAL VOLATILITY SPECTRA: SUCCESS</div>
-                  {introProgress > 25 && <div>[SPEED] CURRENT DATA STREAM LATENCY: 1.2ms (ZERO-DELAY)</div>}
-                  {introProgress > 55 && <div>[CONFLUENCE] 16 ADVANCED PHASES LOADED</div>}
-                  {introProgress > 80 && <div>[ENGINE] LIVE MARKET INDICATOR STACK READY</div>}
+                  {introProgress > 25 && <div>[SPEED] LIVE FEED LATENCY CHECK: SYNCHRONIZED</div>}
+                  {introProgress > 55 && <div>[CONFLUENCE] 150 ADVANCED MARKET PHASES LOADED</div>}
+                  {introProgress > 80 && <div>[ENGINE] DEEP AI MARKET DETECTOR READY</div>}
                   {introProgress > 95 && <div>[PORTAL] BOOTING OFFICIAL OPERATOR DISPLAY...</div>}
                 </div>
 
@@ -679,7 +679,7 @@ export default function App() {
                       </div>
                       
                       <span className="text-[11px] font-mono font-bold tracking-widest text-[#00ff66] text-center uppercase animate-pulse">
-                        {currentVerificationPhase > 0 ? `PHASE ${currentVerificationPhase}/16 ACTIVE` : 'ENGAGING CONFLUENCE ENGINES...'}
+                        {currentVerificationPhase > 0 ? `PHASE ${currentVerificationPhase}/${totalVerificationPhases} ACTIVE` : 'ENGAGING CONFLUENCE ENGINES...'}
                       </span>
                       <span className="text-[9px] font-mono text-white/70 block mt-1.5 text-center leading-tight">
                         {currentCheckingIndicator || 'Calculating live spot indexes...'}
@@ -689,7 +689,7 @@ export default function App() {
                         <div className="w-full bg-black/60 h-1.5 rounded overflow-hidden mt-3 max-w-[200px] border border-[#00ff66]/10">
                           <div 
                             className="bg-[#00ff66] h-full transition-all duration-150" 
-                            style={{ width: `${(currentVerificationPhase / 16) * 100}%` }}
+                            style={{ width: `${(currentVerificationPhase / totalVerificationPhases) * 100}%` }}
                           />
                         </div>
                       )}
