@@ -1,5 +1,5 @@
 // Server function: fetches REAL market data from Yahoo Finance and runs an
-// advanced 16-phase confluence engine. Output is only CALL / PUT (no WAIT).
+// advanced 150-phase confluence engine. Output is only CALL / PUT (no WAIT).
 // No trading system can guarantee outcomes; this engine improves filtering,
 // data alignment, and multi-timeframe confirmation from live market candles.
 
@@ -235,6 +235,25 @@ function regressionSlope(values: number[], period = 20) {
     den += (i - xMean) ** 2;
   }
   return den ? num / den : 0;
+}
+
+function roc(values: number[], period: number) {
+  const current = last(values, 0);
+  const previous = values[values.length - period - 1] ?? current;
+  return current - previous;
+}
+
+function stdDev(values: number[], period: number) {
+  const slice = values.slice(-period);
+  if (slice.length < 2) return 0;
+  const mean = slice.reduce((sum, value) => sum + value, 0) / slice.length;
+  return Math.sqrt(slice.reduce((sum, value) => sum + (value - mean) ** 2, 0) / slice.length);
+}
+
+function rangePosition(price: number, highs: number[], lows: number[], period: number) {
+  const h = Math.max(...highs.slice(-period));
+  const l = Math.min(...lows.slice(-period));
+  return h === l ? 0.5 : (price - l) / (h - l);
 }
 
 function supertrendBias(highs: number[], lows: number[], closes: number[], atrValue: number, mult = 2.2) {
