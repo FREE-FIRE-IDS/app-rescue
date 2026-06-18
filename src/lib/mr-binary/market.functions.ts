@@ -710,7 +710,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       priceAtSignal: entryPrice,
       accuracy: confidence,
       executeTime: new Date(Date.now() + 1500).toISOString().slice(11, 19) + " UTC",
-      aiReasoning: `${pair} ${cfg.interval}: advanced ${phases.length}-phase score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}.` : ""}`,
+      aiReasoning: `${pair} ${cfg.interval}: advanced ${phases.length}-phase score=${score.toFixed(2)}, replay=${(validation.accuracy * 100).toFixed(1)}%, same-side=${(validation.sameDirectionAccuracy * 100).toFixed(1)}%, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}.` : ""}`,
       phases,
       timestamp: Date.now(),
       signalDecision: isUp ? "STRONG BUY" : "STRONG SELL",
@@ -723,7 +723,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       tp3Price,
       rrRatio: `1:${(tp2Offset / slOffset).toFixed(2)}`,
       top5Drivers: drivers,
-      riskWarning: "Live technical confluence only — binary options remain risky and no bot can guarantee every candle.",
+      riskWarning: `Honest replay filter passed at ${(honestAccuracy * 100).toFixed(1)}% on recent candles; binary options remain risky and no bot can guarantee every candle.`,
       invalidation: isUp ? `Bias invalidated on close below ${stopLossPrice.toFixed(d)}.` : `Bias invalidated on close above ${stopLossPrice.toFixed(d)}.`,
     };
   });
