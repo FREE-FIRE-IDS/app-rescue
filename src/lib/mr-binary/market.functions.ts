@@ -592,7 +592,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       priceAtSignal: entryPrice,
       accuracy: confidence,
       executeTime: new Date(Date.now() + 1500).toISOString().slice(11, 19) + " UTC",
-      aiReasoning: `${pair} ${cfg.interval}: advanced 16-phase score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}.` : ""}`,
+      aiReasoning: `${pair} ${cfg.interval}: advanced ${phases.length}-phase score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}.` : ""}`,
       phases,
       timestamp: Date.now(),
       signalDecision: isUp ? "STRONG BUY" : "STRONG SELL",
