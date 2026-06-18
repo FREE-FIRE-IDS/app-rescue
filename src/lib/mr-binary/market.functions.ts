@@ -61,6 +61,10 @@ type PhaseRes = {
   strength: number;
 };
 
+type AiGatewayResponse = {
+  choices?: Array<{ message?: { content?: string } }>;
+};
+
 function decimals(pair: string) {
   return pair.includes("EUR") || pair.includes("GBP") ? 5 : 2;
 }
@@ -528,7 +532,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
           signal: AbortSignal.timeout(6000),
         });
         if (aiRes.ok) {
-          const j: any = await aiRes.json();
+          const j = (await aiRes.json()) as AiGatewayResponse;
           const raw = String(j.choices?.[0]?.message?.content ?? "");
           const match = raw.match(/\{[\s\S]*\}/);
           if (match) {
