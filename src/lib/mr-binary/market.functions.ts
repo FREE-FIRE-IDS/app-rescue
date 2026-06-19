@@ -25,6 +25,14 @@ const TF_TO_YAHOO: Record<TimeFrameOption, { interval: string; range: string; ht
   "30 Min": { interval: "30m", range: "1mo", htf: "1d", htfRange: "3mo", confirm: "1d", confirmRange: "6mo" },
 };
 
+const TF_SECONDS: Record<TimeFrameOption, number> = {
+  "1 Min": 60,
+  "2 Min": 120,
+  "5 Min": 300,
+  "15 Min": 900,
+  "30 Min": 1800,
+};
+
 interface YahooChart {
   chart: {
     result?: Array<{
@@ -111,6 +119,28 @@ function parseCandles(r: YahooResult): Candle[] {
     });
   }
   return rows;
+}
+
+function toPublicCandles(candles: Candle[], pair: string): CandleData[] {
+  const d = decimals(pair);
+  return candles.slice(-48).map((c) => ({
+    time: new Date(c.time * 1000).toISOString().slice(11, 16),
+    open: parseFloat(c.open.toFixed(d)),
+    high: parseFloat(c.high.toFixed(d)),
+    low: parseFloat(c.low.toFixed(d)),
+    close: parseFloat(c.close.toFixed(d)),
+    volume: c.volume,
+    isAiChecked: false,
+  }));
+}
+
+function nextCandleIso(candles: Candle[], timeFrame: TimeFrameOption) {
+  const seconds = TF_SECONDS[timeFrame] ?? 60;
+  const lastOpenMs = last(candles, { time: Math.floor(Date.now() / 1000) } as Candle).time * 1000;
+  const alignedNext = lastOpenMs + seconds * 1000;
+  const now = Date.now();
+  const nextMs = alignedNext > now ? alignedNext : Math.ceil(now / (seconds * 1000)) * seconds * 1000;
+  return new Date(nextMs).toISOString();
 }
 
 function last<T>(arr: T[], fallback: T) {
