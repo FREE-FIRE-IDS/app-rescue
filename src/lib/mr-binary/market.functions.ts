@@ -318,6 +318,31 @@ function swingDivergence(closes: number[], rsiVals: number[]) {
   };
 }
 
+function candlePatternPhases(candles: Candle[], atrValue: number): PhaseRes[] {
+  const phases: PhaseRes[] = [];
+  const rows = candles.slice(-36);
+  rows.forEach((c, index) => {
+    const prev = rows[index - 1] ?? c;
+    const prev2 = rows[index - 2] ?? prev;
+    const range = Math.max(c.high - c.low, atrValue * 0.08, 0.00001);
+    const body = Math.abs(c.close - c.open);
+    const topWick = c.high - Math.max(c.open, c.close);
+    const bottomWick = Math.min(c.open, c.close) - c.low;
+    const bullish = c.close >= c.open;
+    const prevBullish = prev.close >= prev.open;
+    const engulfingUp = bullish && !prevBullish && c.open <= prev.close && c.close >= prev.open;
+    const engulfingDown = !bullish && prevBullish && c.open >= prev.close && c.close <= prev.open;
+    const pinUp = bottomWick > body * 1.8 && topWick < range * 0.28;
+    const pinDown = topWick > body * 1.8 && bottomWick < range * 0.28;
+    const doji = body / range < 0.18;
+    const threeUp = bullish && prevBullish && prev2.close >= prev2.open && c.close > prev.close && prev.close > prev2.close;
+    const threeDown = !bullish && !prevBullish && prev2.close < prev2.open && c.close < prev.close && prev.close < prev2.close;
+    const vote = engulfingUp || pinUp || threeUp ? 1.15 : engulfingDown || pinDown || threeDown ? -1.15 : doji ? (c.close >= prev.close ? 0.22 : -0.22) : bullish ? 0.48 : -0.48;
+    pushPhase(phases, `Pattern scan -${rows.length - index}: body=${(body / Math.max(atrValue, 0.00001)).toFixed(2)} wickT/B=${(topWick / range).toFixed(2)}/${(bottomWick / range).toFixed(2)}`, engulfingUp ? "BULLISH_ENGULFING" : engulfingDown ? "BEARISH_ENGULFING" : pinUp ? "BULLISH_PIN_BAR" : pinDown ? "BEARISH_PIN_BAR" : threeUp ? "THREE_CANDLE_PUSH_UP" : threeDown ? "THREE_CANDLE_PUSH_DOWN" : doji ? "DOJI_DECISION_CANDLE" : bullish ? "CANDLE_CLOSE_UP" : "CANDLE_CLOSE_DOWN", vote, 0.34 + index / 95, Math.abs(vote));
+  });
+  return phases;
+}
+
 function pushPhase(P: PhaseRes[], label: string, status: string, rawVote: number, weight: number, strength = Math.abs(rawVote)) {
   const vote = clamp(rawVote, -1.8, 1.8);
   P.push({ label, status, vote, weight, strength: clamp(strength, 0, 1.8) });
