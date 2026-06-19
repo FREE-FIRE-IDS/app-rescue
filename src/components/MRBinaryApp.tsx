@@ -88,8 +88,8 @@ export default function App() {
     timestamp: Date.now()
   });
 
-  // Initialize 18 historical candlestick chart blocks
-  const [, setCandles] = useState<CandleData[]>(() => generateCandles('XAU/USD'));
+  // Initialize historical candlestick chart blocks, then replace with live candles from market feed.
+  const [candles, setCandles] = useState<CandleData[]>(() => generateCandles('XAU/USD'));
 
   const updateCandles = (newPrice: number) => {
     setCandles(prev => {
@@ -126,9 +126,11 @@ export default function App() {
   const [selectedTime, setSelectedTime] = useState<TimeFrameOption>('1 Min');
   const [isGeneratingSignal, setIsGeneratingSignal] = useState(false);
   const [currentVerificationPhase, setCurrentVerificationPhase] = useState(0);
-  const [totalVerificationPhases, setTotalVerificationPhases] = useState(150);
+  const [totalVerificationPhases, setTotalVerificationPhases] = useState(200);
   const [currentCheckingIndicator, setCurrentCheckingIndicator] = useState('');
   const [activeSignal, setActiveSignal] = useState<SignalResponse | null>(null);
+  const [nextCandleTime, setNextCandleTime] = useState(() => getNextCandleTime('1 Min'));
+  const [countdownMs, setCountdownMs] = useState(() => Math.max(0, getNextCandleTime('1 Min') - Date.now()));
 
   // Audio indicators simulated visually, but let's have a nice sound frequency generator using WebAudio if allowed
   const playBeep = (freq: number, type: 'sine' | 'square' | 'sawtooth' = 'sine', duration: number = 0.08) => {
