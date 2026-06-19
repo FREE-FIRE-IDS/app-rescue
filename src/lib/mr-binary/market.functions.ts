@@ -345,6 +345,8 @@ export const fetchMarketDataFn = createServerFn({ method: "GET" })
       high: parseFloat((highs.length ? Math.max(...highs) : price).toFixed(d)),
       low: parseFloat((lows.length ? Math.min(...lows) : price).toFixed(d)),
       timestamp: Date.now(),
+      candles: toPublicCandles(rows, pair),
+      nextCandleTime: nextCandleIso(rows, "1 Min"),
     };
   });
 
