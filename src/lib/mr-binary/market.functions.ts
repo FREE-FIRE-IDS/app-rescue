@@ -512,6 +512,16 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       pushPhase(P, `VOL-${period} sigma=${sigma.toFixed(d)} slope=${slope.toFixed(d)}`, vote > 0 ? `VOL_${period}_BULL_EXPANSION` : `VOL_${period}_BEAR_EXPANSION`, vote, 0.3 + Math.min(period, 60) / 260, Math.abs(vote));
     }
 
+    const breakoutPeriods = [9, 11, 13, 17, 19, 23, 27, 31, 37, 43, 52, 64, 78, 96];
+    for (const period of breakoutPeriods) {
+      const recentHigh = Math.max(...highs.slice(-period, -1));
+      const recentLow = Math.min(...lows.slice(-period, -1));
+      const upperDistance = (price - recentHigh) / Math.max(atr14, 0.00001);
+      const lowerDistance = (recentLow - price) / Math.max(atr14, 0.00001);
+      const vote = price >= recentHigh ? clamp(0.78 + upperDistance * 0.18, 0.45, 1.28) : price <= recentLow ? -clamp(0.78 + lowerDistance * 0.18, 0.45, 1.28) : price >= (recentHigh + recentLow) / 2 ? 0.24 : -0.24;
+      pushPhase(P, `${period}-bar liquidity breakout high=${recentHigh.toFixed(d)} low=${recentLow.toFixed(d)}`, vote > 0 ? `LIQUIDITY_${period}_BULL_CONTROL` : `LIQUIDITY_${period}_BEAR_CONTROL`, vote, 0.38 + Math.min(period, 96) / 340, Math.abs(vote));
+    }
+
     const recentCandles = candles.slice(-12);
     recentCandles.forEach((candle, index) => {
       const localBody = Math.abs(candle.close - candle.open) / Math.max(atr14, 0.00001);
