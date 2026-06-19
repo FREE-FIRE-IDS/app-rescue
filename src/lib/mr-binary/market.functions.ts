@@ -1,5 +1,5 @@
 // Server function: fetches REAL market data from Yahoo Finance and runs an
-// advanced 150-phase confluence engine. Output is only CALL / PUT (no WAIT).
+// advanced 200+ phase confluence engine. Output is only CALL / PUT (no WAIT).
 // No trading system can guarantee outcomes; this engine improves filtering,
 // data alignment, and multi-timeframe confirmation from live market candles.
 
