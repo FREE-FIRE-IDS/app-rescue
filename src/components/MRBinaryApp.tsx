@@ -765,7 +765,7 @@ export default function App() {
                     </h3>
                     <div className="flex items-center space-x-2">
                       <span className="w-1.5 h-1.5 bg-[#00ff66] rounded-full animate-ping" />
-                      <span className="text-[9px] font-mono text-[#00ff66]/70">TWELVE DATA ACTIVE</span>
+                      <span className="text-[9px] font-mono text-[#00ff66]/70">0.1S LIVE FEED ACTIVE</span>
                     </div>
                   </div>
 
@@ -785,13 +785,21 @@ export default function App() {
 
               {/* RIGHT CONTENT AREA: SIGNAL OUTCOMES */}
               <div className="lg:col-span-12 xl:col-span-8 flex flex-col space-y-6" id="display_column">
+                <AIChart
+                  candles={candles}
+                  currentPrice={priceData.price}
+                  isScanning={isGeneratingSignal}
+                  scanProgress={(currentVerificationPhase / Math.max(totalVerificationPhases, 1)) * 100}
+                  direction={activeSignal?.direction ?? null}
+                  pair={selectedPair}
+                />
                 
                 {/* ACTIVE SIGNAL RADAR SCREEN */}
                 <div className="bg-[#020603]/90 border border-[#00ff66]/20 p-6 rounded-lg relative min-h-[350px] flex flex-col justify-between" id="active_radar_panel">
                   
                   {/* Hexagon tech grid decoration */}
                   <div className="absolute top-3 right-3 flex items-center space-x-1 text-[9px] font-mono text-[#00ff66]/50 bg-black/40 px-2 py-0.5 border border-[#00ff66]/10 rounded">
-                    <span>LIVE MARKET DATA STREAM</span>
+                    <span>NEXT CANDLE {formatCountdown(countdownMs)}</span>
                   </div>
 
                   <h3 className="text-sm font-bold uppercase tracking-widest text-[#00ff66]/80 mb-4 flex items-center space-x-2">
