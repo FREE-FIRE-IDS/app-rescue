@@ -4,7 +4,10 @@
 // data alignment, and multi-timeframe confirmation from live market candles.
 
 import { createServerFn } from "@tanstack/react-start";
-import type { MarketPriceData, PhaseCheck, SignalResponse, TimeFrameOption } from "./types";
+import { generateObject } from "ai";
+import { z } from "zod";
+import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import type { CandleData, MarketPriceData, PhaseCheck, SignalResponse, TimeFrameOption } from "./types";
 
 const YAHOO_SYMBOL: Record<string, string> = {
   "XAU/USD": "GC=F",
@@ -61,9 +64,12 @@ type PhaseRes = {
   strength: number;
 };
 
-type AiGatewayResponse = {
-  choices?: Array<{ message?: { content?: string } }>;
-};
+const AiSignalSchema = z.object({
+  direction: z.enum(["CALL", "PUT"]),
+  confidence: z.number(),
+  reason: z.string(),
+  riskFlags: z.array(z.string()).default([]),
+});
 
 function decimals(pair: string) {
   return pair.includes("EUR") || pair.includes("GBP") ? 5 : 2;
