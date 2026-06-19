@@ -537,7 +537,7 @@ export default function App() {
                   </div>
                   <div>[MATH] CALCULATING HISTORICAL VOLATILITY SPECTRA: SUCCESS</div>
                   {introProgress > 25 && <div>[SPEED] LIVE FEED LATENCY CHECK: SYNCHRONIZED</div>}
-                  {introProgress > 55 && <div>[CONFLUENCE] 150 ADVANCED MARKET PHASES LOADED</div>}
+                  {introProgress > 55 && <div>[CONFLUENCE] 200 LIVE MARKET PHASES LOADED</div>}
                   {introProgress > 80 && <div>[ENGINE] DEEP AI MARKET DETECTOR READY</div>}
                   {introProgress > 95 && <div>[PORTAL] BOOTING OFFICIAL OPERATOR DISPLAY...</div>}
                 </div>
@@ -584,6 +584,11 @@ export default function App() {
                   <Clock className="w-4 h-4 text-[#00ff66]" />
                   <span>UTC TIME:</span>
                   <span className="text-white">{new Date().toISOString().slice(11, 19)}</span>
+                </div>
+                <div className="h-4 w-[1px] bg-[#00ff66]/20 hidden sm:block"></div>
+                <div className="flex items-center space-x-2 text-[10px] uppercase">
+                  <span className="text-[#00ff66]/55">NEXT CANDLE</span>
+                  <span className="text-white font-black tabular-nums">{formatCountdown(countdownMs)}</span>
                 </div>
                 <div className="h-4 w-[1px] bg-[#00ff66]/20 hidden sm:block"></div>
                 <button
