@@ -733,14 +733,12 @@ export default function App() {
                         {currentCheckingIndicator || 'Calculating live spot indexes...'}
                       </span>
 
-                      {settings.delaySeconds > 0 && (
-                        <div className="w-full bg-black/60 h-1.5 rounded overflow-hidden mt-3 max-w-[200px] border border-[#00ff66]/10">
-                          <div 
-                            className="bg-[#00ff66] h-full transition-all duration-150" 
-                            style={{ width: `${(currentVerificationPhase / totalVerificationPhases) * 100}%` }}
-                          />
-                        </div>
-                      )}
+                      <div className="w-full bg-black/60 h-1.5 rounded overflow-hidden mt-3 max-w-[200px] border border-[#00ff66]/10">
+                        <div 
+                          className="bg-[#00ff66] h-full transition-all duration-150" 
+                          style={{ width: `${(currentVerificationPhase / totalVerificationPhases) * 100}%` }}
+                        />
+                      </div>
                     </div>
                   )}
 
