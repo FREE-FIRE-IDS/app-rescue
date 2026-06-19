@@ -521,6 +521,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       const vote = bullish ? clamp(0.18 + localBody * 0.35 + (localBottom > localTop ? 0.2 : 0), 0.16, 1.05) : -clamp(0.18 + localBody * 0.35 + (localTop > localBottom ? 0.2 : 0), 0.16, 1.05);
       pushPhase(P, `Candle microstructure -${recentCandles.length - index} body=${localBody.toFixed(2)} wickT/B=${localTop.toFixed(2)}/${localBottom.toFixed(2)}`, vote > 0 ? `CANDLE_${index + 1}_BUY_PRESSURE` : `CANDLE_${index + 1}_SELL_PRESSURE`, vote, 0.26 + index / 80, Math.abs(vote));
     });
+    P.push(...candlePatternPhases(candles, atr14));
 
     const mtfChecks = [
       { label: `${cfg.htf} EMA21/50`, vote: htfUp ? 1.18 : -1.18, strength: 1.1 },
