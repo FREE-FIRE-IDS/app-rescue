@@ -160,19 +160,36 @@ export default function App() {
 
   // Live price tick from Yahoo Finance via server function
   useEffect(() => {
+    let inFlight = false;
     const tick = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
         const data = await fetchMarketData({ data: { pair: selectedPair } });
         setPriceData(data);
-        updateCandles(data.price);
+        if (data.candles?.length) setCandles(data.candles);
+        else updateCandles(data.price);
       } catch (err) {
         // network blip — skip this tick silently
+      } finally {
+        inFlight = false;
       }
     };
     tick();
-    const interval = setInterval(tick, 3000);
+    const interval = setInterval(tick, 100);
     return () => clearInterval(interval);
   }, [selectedPair, fetchMarketData]);
+
+  useEffect(() => {
+    const syncCountdown = () => {
+      const next = getNextCandleTime(selectedTime);
+      setNextCandleTime(next);
+      setCountdownMs(Math.max(0, next - Date.now()));
+    };
+    syncCountdown();
+    const interval = setInterval(syncCountdown, 100);
+    return () => clearInterval(interval);
+  }, [selectedTime]);
 
   // Operator authentication — restored AHAD credentials
   const handleLogin = (e: React.FormEvent) => {
