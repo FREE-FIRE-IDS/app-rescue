@@ -561,63 +561,59 @@ export const generateSignalFn = createServerFn({ method: "POST" })
 
     let aiVerdict: Direction | "UNKNOWN" = "UNKNOWN";
     let aiNote = "";
+    let aiRiskFlags: string[] = [];
     try {
       const key = process.env.LOVABLE_API_KEY;
       if (key) {
+        const gateway = createLovableAiGatewayProvider(key);
         const snapshot = {
           pair,
           timeframe: cfg.interval,
           higherTimeframe: cfg.htf,
           confirmTimeframe: cfg.confirm,
+          nextCandleTime: nextCandleIso(candles, timeFrame),
           price: +price.toFixed(d),
           score: +score.toFixed(3),
           alignment: +(alignment * 100).toFixed(1),
           consensus: +(consensus * 100).toFixed(1),
           direction,
+          latestCandles: candles.slice(-28).map((c) => ({ o: +c.open.toFixed(d), h: +c.high.toFixed(d), l: +c.low.toFixed(d), c: +c.close.toFixed(d), v: c.volume })),
           indicators: {
             ema9: +ema9v.toFixed(d), ema21: +ema21v.toFixed(d), ema50: +ema50v.toFixed(d),
             sma5: +sma5v.toFixed(d), sma20: +sma20v.toFixed(d), sma50: +sma50v.toFixed(d),
             rsi14: +rsi14.toFixed(2), macdHist: +m.hist.toFixed(d), adx: +adx14.adx.toFixed(2),
             vwap: +vw.toFixed(d), bbPosPct: +(bbPos * 100).toFixed(1), stoch: +stoch.toFixed(1),
             atr14: +atr14.toFixed(d), htfUp, confirmUp, nearSup, nearRes, volSpike: +volSpike.toFixed(2),
+            latestPattern: P.slice(-42, -6).map((p) => p.status).slice(-12),
           },
-          phases: P.map((p) => ({ status: p.status, vote: +p.vote.toFixed(2), weight: p.weight })),
+          phaseSummary: {
+            total: P.length,
+            callVotes,
+            putVotes,
+            strongest: P.slice().sort((a, b) => Math.abs(b.vote * b.weight) - Math.abs(a.vote * a.weight)).slice(0, 24).map((p) => ({ status: p.status, vote: +p.vote.toFixed(2), weight: +p.weight.toFixed(2) })),
+          },
         };
-        const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-          body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
-            messages: [
-              { role: "system", content: "You are a strict technical risk filter. Return ONLY JSON: {\"direction\":\"CALL\"|\"PUT\",\"confidence\":0-100,\"reason\":\"short\"}. Choose the statistically stronger side from the supplied live indicators; never return WAIT." },
-              { role: "user", content: JSON.stringify(snapshot) },
-            ],
-          }),
-          signal: AbortSignal.timeout(6000),
+        const result = await generateObject({
+          model: gateway("google/gemini-3-flash-preview"),
+          schema: AiSignalSchema,
+          system: "You are a strict real-time candle risk filter for short-expiry market analysis. Study every supplied phase, latest candles, pattern states, trend/MTF alignment and risk flags. Return only CALL or PUT, never WAIT. If data is mixed, choose the statistically stronger side and lower confidence.",
+          prompt: JSON.stringify(snapshot),
+          timeout: 8000,
         });
-        if (aiRes.ok) {
-          const j = (await aiRes.json()) as AiGatewayResponse;
-          const raw = String(j.choices?.[0]?.message?.content ?? "");
-          const match = raw.match(/\{[\s\S]*\}/);
-          if (match) {
-            const parsed = JSON.parse(match[0]);
-            if (parsed.direction === "CALL" || parsed.direction === "PUT") {
-              aiVerdict = parsed.direction as Direction;
-              aiNote = String(parsed.reason ?? "").slice(0, 140);
-              const aiConf = clamp(Math.round(Number(parsed.confidence) || 88), 82, 99);
-              if (aiVerdict === direction) confidence = clamp(Math.round((confidence + aiConf) / 2) + 2, 88, 99);
-              else if (aiConf >= 92 && alignment < 0.52) {
-                direction = aiVerdict as Direction;
-                confidence = clamp(aiConf - 2, 88, 97);
-              } else {
-                confidence = clamp(confidence - 2, 88, 97);
-              }
-            }
-          }
+        aiVerdict = result.object.direction;
+        aiNote = result.object.reason.slice(0, 150);
+        aiRiskFlags = result.object.riskFlags.slice(0, 4);
+        const aiConf = clamp(Math.round(Number(result.object.confidence) || 88), 80, 99);
+        if (aiVerdict === direction) confidence = clamp(Math.round((confidence + aiConf) / 2) + 2, 88, 99);
+        else if (aiConf >= 91 && alignment < 0.58) {
+          direction = aiVerdict;
+          confidence = clamp(aiConf - 2, 86, 97);
+        } else {
+          confidence = clamp(Math.min(confidence, aiConf) - 3, 84, 96);
         }
       }
     } catch {
-      // AI layer is an optional second opinion; technical engine remains primary.
+      // AI layer is a strict second opinion; technical engine remains primary if credits/network fail.
     }
 
     const isUp = direction === "CALL";
