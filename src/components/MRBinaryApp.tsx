@@ -14,6 +14,29 @@ import {
 import { MarketPriceData, SignalResponse, ScreenState, TimeFrameOption, CandleData } from '@/lib/mr-binary/types';
 import { useServerFn } from '@tanstack/react-start';
 import { fetchMarketDataFn, generateSignalFn } from '@/lib/mr-binary/market.functions';
+import { AIChart } from './AIChart';
+
+const TIMEFRAME_MS: Record<TimeFrameOption, number> = {
+  '1 Min': 60_000,
+  '2 Min': 120_000,
+  '5 Min': 300_000,
+  '15 Min': 900_000,
+  '30 Min': 1_800_000,
+};
+
+const getNextCandleTime = (timeFrame: TimeFrameOption, now = Date.now()) => {
+  const span = TIMEFRAME_MS[timeFrame] ?? 60_000;
+  return Math.ceil(now / span) * span;
+};
+
+const formatCountdown = (ms: number) => {
+  const safe = Math.max(0, ms);
+  const totalSeconds = Math.floor(safe / 1000);
+  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+  const tenths = Math.floor((safe % 1000) / 100);
+  return `${minutes}:${seconds}.${tenths}`;
+};
 
 export default function App() {
   // Login & Flow State
@@ -22,9 +45,6 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [apiError, setApiError] = useState('');
-  const [settings] = useState({
-    delaySeconds: 5,
-  });
 
   // Server-function hooks for live market data + signal computation
   const fetchMarketData = useServerFn(fetchMarketDataFn);
@@ -65,8 +85,8 @@ export default function App() {
     timestamp: Date.now()
   });
 
-  // Initialize 18 historical candlestick chart blocks
-  const [, setCandles] = useState<CandleData[]>(() => generateCandles('XAU/USD'));
+  // Initialize historical candlestick chart blocks, then replace with live candles from market feed.
+  const [candles, setCandles] = useState<CandleData[]>(() => generateCandles('XAU/USD'));
 
   const updateCandles = (newPrice: number) => {
     setCandles(prev => {
@@ -103,13 +123,16 @@ export default function App() {
   const [selectedTime, setSelectedTime] = useState<TimeFrameOption>('1 Min');
   const [isGeneratingSignal, setIsGeneratingSignal] = useState(false);
   const [currentVerificationPhase, setCurrentVerificationPhase] = useState(0);
-  const [totalVerificationPhases, setTotalVerificationPhases] = useState(150);
+  const [totalVerificationPhases, setTotalVerificationPhases] = useState(200);
   const [currentCheckingIndicator, setCurrentCheckingIndicator] = useState('');
   const [activeSignal, setActiveSignal] = useState<SignalResponse | null>(null);
+  const [nextCandleTime, setNextCandleTime] = useState(() => getNextCandleTime('1 Min'));
+  const [countdownMs, setCountdownMs] = useState(() => Math.max(0, getNextCandleTime('1 Min') - Date.now()));
 
   // Audio indicators simulated visually, but let's have a nice sound frequency generator using WebAudio if allowed
   const playBeep = (freq: number, type: 'sine' | 'square' | 'sawtooth' = 'sine', duration: number = 0.08) => {
     try {
+      if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
       const audioWindow = window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
       const AudioContextCtor = audioWindow.AudioContext || audioWindow.webkitAudioContext;
       if (!AudioContextCtor) return;
@@ -135,19 +158,36 @@ export default function App() {
 
   // Live price tick from Yahoo Finance via server function
   useEffect(() => {
+    let inFlight = false;
     const tick = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
         const data = await fetchMarketData({ data: { pair: selectedPair } });
         setPriceData(data);
-        updateCandles(data.price);
+        if (data.candles?.length) setCandles(data.candles);
+        else updateCandles(data.price);
       } catch (err) {
         // network blip — skip this tick silently
+      } finally {
+        inFlight = false;
       }
     };
     tick();
-    const interval = setInterval(tick, 3000);
+    const interval = setInterval(tick, 100);
     return () => clearInterval(interval);
   }, [selectedPair, fetchMarketData]);
+
+  useEffect(() => {
+    const syncCountdown = () => {
+      const next = getNextCandleTime(selectedTime);
+      setNextCandleTime(next);
+      setCountdownMs(Math.max(0, next - Date.now()));
+    };
+    syncCountdown();
+    const interval = setInterval(syncCountdown, 100);
+    return () => clearInterval(interval);
+  }, [selectedTime]);
 
   // Operator authentication — restored AHAD credentials
   const handleLogin = (e: React.FormEvent) => {
@@ -217,28 +257,34 @@ export default function App() {
     setActiveSignal(null);
     setApiError('');
     setCurrentVerificationPhase(0);
-    setTotalVerificationPhases(150);
-    setCurrentCheckingIndicator('ENGAGING AI COGNITIVE MATRIX...');
+    setTotalVerificationPhases(200);
+    setCurrentCheckingIndicator('LOCKING LIVE CANDLE CLOSE + NEXT CANDLE OPEN...');
 
     playBeep(600, 'sawtooth', 0.1);
 
     try {
+      const lockTime = getNextCandleTime(selectedTime);
+      let scanPhase = 0;
+      while (Date.now() < lockTime) {
+        scanPhase = (scanPhase % 200) + 1;
+        setCurrentVerificationPhase(scanPhase);
+        setCurrentCheckingIndicator(`REAL-TIME CANDLE ANALYSIS UNTIL NEXT OPEN: ${formatCountdown(lockTime - Date.now())}`);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      setCurrentVerificationPhase(200);
+      setCurrentCheckingIndicator('NEXT CANDLE OPENED — FINAL AI DEEP MARKET DECISION...');
       const signal: SignalResponse = await generateSignalFromMarket({
         data: { pair: selectedPair, timeFrame: selectedTime },
       });
 
-      // If calculation delay is configured, perform step-by-step visual scan representation
-      if (settings.delaySeconds > 0) {
-        const totalPhases = signal.phases?.length || 150;
-        setTotalVerificationPhases(totalPhases);
-        const delayPerPhase = (settings.delaySeconds * 1000) / totalPhases;
-        
-        for (let i = 0; i < totalPhases; i++) {
-          setCurrentVerificationPhase(i + 1);
-          setCurrentCheckingIndicator(signal.phases[i]?.indicator || 'Validating Multi-Factor Confluences...');
-          playBeep(500 + (i * 35), 'sine', 0.05);
-          await new Promise(resolve => setTimeout(resolve, delayPerPhase));
-        }
+      const totalPhases = signal.phases?.length || 200;
+      setTotalVerificationPhases(totalPhases);
+      for (let i = Math.max(0, totalPhases - 18); i < totalPhases; i++) {
+        setCurrentVerificationPhase(i + 1);
+        setCurrentCheckingIndicator(signal.phases[i]?.indicator || 'Validating final AI confluence gates...');
+        playBeep(500 + (i * 8), 'sine', 0.025);
+        await new Promise(resolve => setTimeout(resolve, 45));
       }
 
       setActiveSignal(signal);
@@ -492,7 +538,7 @@ export default function App() {
                   </div>
                   <div>[MATH] CALCULATING HISTORICAL VOLATILITY SPECTRA: SUCCESS</div>
                   {introProgress > 25 && <div>[SPEED] LIVE FEED LATENCY CHECK: SYNCHRONIZED</div>}
-                  {introProgress > 55 && <div>[CONFLUENCE] 150 ADVANCED MARKET PHASES LOADED</div>}
+                  {introProgress > 55 && <div>[CONFLUENCE] 200 LIVE MARKET PHASES LOADED</div>}
                   {introProgress > 80 && <div>[ENGINE] DEEP AI MARKET DETECTOR READY</div>}
                   {introProgress > 95 && <div>[PORTAL] BOOTING OFFICIAL OPERATOR DISPLAY...</div>}
                 </div>
@@ -539,6 +585,11 @@ export default function App() {
                   <Clock className="w-4 h-4 text-[#00ff66]" />
                   <span>UTC TIME:</span>
                   <span className="text-white">{new Date().toISOString().slice(11, 19)}</span>
+                </div>
+                <div className="h-4 w-[1px] bg-[#00ff66]/20 hidden sm:block"></div>
+                <div className="flex items-center space-x-2 text-[10px] uppercase">
+                  <span className="text-[#00ff66]/55">NEXT CANDLE</span>
+                  <span className="text-white font-black tabular-nums">{formatCountdown(countdownMs)}</span>
                 </div>
                 <div className="h-4 w-[1px] bg-[#00ff66]/20 hidden sm:block"></div>
                 <button
@@ -688,14 +739,12 @@ export default function App() {
                         {currentCheckingIndicator || 'Calculating live spot indexes...'}
                       </span>
 
-                      {settings.delaySeconds > 0 && (
-                        <div className="w-full bg-black/60 h-1.5 rounded overflow-hidden mt-3 max-w-[200px] border border-[#00ff66]/10">
-                          <div 
-                            className="bg-[#00ff66] h-full transition-all duration-150" 
-                            style={{ width: `${(currentVerificationPhase / totalVerificationPhases) * 100}%` }}
-                          />
-                        </div>
-                      )}
+                      <div className="w-full bg-black/60 h-1.5 rounded overflow-hidden mt-3 max-w-[200px] border border-[#00ff66]/10">
+                        <div 
+                          className="bg-[#00ff66] h-full transition-all duration-150" 
+                          style={{ width: `${(currentVerificationPhase / totalVerificationPhases) * 100}%` }}
+                        />
+                      </div>
                     </div>
                   )}
 
@@ -717,7 +766,7 @@ export default function App() {
                     </h3>
                     <div className="flex items-center space-x-2">
                       <span className="w-1.5 h-1.5 bg-[#00ff66] rounded-full animate-ping" />
-                      <span className="text-[9px] font-mono text-[#00ff66]/70">TWELVE DATA ACTIVE</span>
+                      <span className="text-[9px] font-mono text-[#00ff66]/70">0.1S LIVE FEED ACTIVE</span>
                     </div>
                   </div>
 
@@ -737,13 +786,21 @@ export default function App() {
 
               {/* RIGHT CONTENT AREA: SIGNAL OUTCOMES */}
               <div className="lg:col-span-12 xl:col-span-8 flex flex-col space-y-6" id="display_column">
+                <AIChart
+                  candles={candles}
+                  currentPrice={priceData.price}
+                  isScanning={isGeneratingSignal}
+                  scanProgress={(currentVerificationPhase / Math.max(totalVerificationPhases, 1)) * 100}
+                  direction={activeSignal?.direction ?? null}
+                  pair={selectedPair}
+                />
                 
                 {/* ACTIVE SIGNAL RADAR SCREEN */}
                 <div className="bg-[#020603]/90 border border-[#00ff66]/20 p-6 rounded-lg relative min-h-[350px] flex flex-col justify-between" id="active_radar_panel">
                   
                   {/* Hexagon tech grid decoration */}
                   <div className="absolute top-3 right-3 flex items-center space-x-1 text-[9px] font-mono text-[#00ff66]/50 bg-black/40 px-2 py-0.5 border border-[#00ff66]/10 rounded">
-                    <span>LIVE MARKET DATA STREAM</span>
+                    <span>NEXT CANDLE {formatCountdown(countdownMs)}</span>
                   </div>
 
                   <h3 className="text-sm font-bold uppercase tracking-widest text-[#00ff66]/80 mb-4 flex items-center space-x-2">

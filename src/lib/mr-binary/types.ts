@@ -7,6 +7,8 @@ export interface MarketPriceData {
   high: number;
   low: number;
   timestamp: number;
+  candles?: CandleData[];
+  nextCandleTime?: string;
 }
 
 export interface PhaseCheck {
@@ -25,6 +27,8 @@ export interface SignalResponse {
   priceAtSignal: number;
   accuracy: number;
   executeTime?: string;
+  nextCandleTime?: string;
+  analysisMode?: string;
   aiReasoning?: string;
   phases: PhaseCheck[];
   timestamp: number;

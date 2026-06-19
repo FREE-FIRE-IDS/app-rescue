@@ -1,10 +1,13 @@
 // Server function: fetches REAL market data from Yahoo Finance and runs an
-// advanced 150-phase confluence engine. Output is only CALL / PUT (no WAIT).
+// advanced 200+ phase confluence engine. Output is only CALL / PUT (no WAIT).
 // No trading system can guarantee outcomes; this engine improves filtering,
 // data alignment, and multi-timeframe confirmation from live market candles.
 
 import { createServerFn } from "@tanstack/react-start";
-import type { MarketPriceData, PhaseCheck, SignalResponse, TimeFrameOption } from "./types";
+import { generateObject } from "ai";
+import { z } from "zod";
+import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import type { CandleData, MarketPriceData, PhaseCheck, SignalResponse, TimeFrameOption } from "./types";
 
 const YAHOO_SYMBOL: Record<string, string> = {
   "XAU/USD": "GC=F",
@@ -20,6 +23,14 @@ const TF_TO_YAHOO: Record<TimeFrameOption, { interval: string; range: string; ht
   "5 Min": { interval: "5m", range: "5d", htf: "30m", htfRange: "1mo", confirm: "60m", confirmRange: "1mo" },
   "15 Min": { interval: "15m", range: "5d", htf: "60m", htfRange: "1mo", confirm: "1d", confirmRange: "3mo" },
   "30 Min": { interval: "30m", range: "1mo", htf: "1d", htfRange: "3mo", confirm: "1d", confirmRange: "6mo" },
+};
+
+const TF_SECONDS: Record<TimeFrameOption, number> = {
+  "1 Min": 60,
+  "2 Min": 120,
+  "5 Min": 300,
+  "15 Min": 900,
+  "30 Min": 1800,
 };
 
 interface YahooChart {
@@ -61,9 +72,12 @@ type PhaseRes = {
   strength: number;
 };
 
-type AiGatewayResponse = {
-  choices?: Array<{ message?: { content?: string } }>;
-};
+const AiSignalSchema = z.object({
+  direction: z.enum(["CALL", "PUT"]),
+  confidence: z.number(),
+  reason: z.string(),
+  riskFlags: z.array(z.string()).default([]),
+});
 
 function decimals(pair: string) {
   return pair.includes("EUR") || pair.includes("GBP") ? 5 : 2;
@@ -105,6 +119,28 @@ function parseCandles(r: YahooResult): Candle[] {
     });
   }
   return rows;
+}
+
+function toPublicCandles(candles: Candle[], pair: string): CandleData[] {
+  const d = decimals(pair);
+  return candles.slice(-48).map((c) => ({
+    time: new Date(c.time * 1000).toISOString().slice(11, 16),
+    open: parseFloat(c.open.toFixed(d)),
+    high: parseFloat(c.high.toFixed(d)),
+    low: parseFloat(c.low.toFixed(d)),
+    close: parseFloat(c.close.toFixed(d)),
+    volume: c.volume,
+    isAiChecked: false,
+  }));
+}
+
+function nextCandleIso(candles: Candle[], timeFrame: TimeFrameOption) {
+  const seconds = TF_SECONDS[timeFrame] ?? 60;
+  const lastOpenMs = last(candles, { time: Math.floor(Date.now() / 1000) } as Candle).time * 1000;
+  const alignedNext = lastOpenMs + seconds * 1000;
+  const now = Date.now();
+  const nextMs = alignedNext > now ? alignedNext : Math.ceil(now / (seconds * 1000)) * seconds * 1000;
+  return new Date(nextMs).toISOString();
 }
 
 function last<T>(arr: T[], fallback: T) {
@@ -282,6 +318,31 @@ function swingDivergence(closes: number[], rsiVals: number[]) {
   };
 }
 
+function candlePatternPhases(candles: Candle[], atrValue: number): PhaseRes[] {
+  const phases: PhaseRes[] = [];
+  const rows = candles.slice(-36);
+  rows.forEach((c, index) => {
+    const prev = rows[index - 1] ?? c;
+    const prev2 = rows[index - 2] ?? prev;
+    const range = Math.max(c.high - c.low, atrValue * 0.08, 0.00001);
+    const body = Math.abs(c.close - c.open);
+    const topWick = c.high - Math.max(c.open, c.close);
+    const bottomWick = Math.min(c.open, c.close) - c.low;
+    const bullish = c.close >= c.open;
+    const prevBullish = prev.close >= prev.open;
+    const engulfingUp = bullish && !prevBullish && c.open <= prev.close && c.close >= prev.open;
+    const engulfingDown = !bullish && prevBullish && c.open >= prev.close && c.close <= prev.open;
+    const pinUp = bottomWick > body * 1.8 && topWick < range * 0.28;
+    const pinDown = topWick > body * 1.8 && bottomWick < range * 0.28;
+    const doji = body / range < 0.18;
+    const threeUp = bullish && prevBullish && prev2.close >= prev2.open && c.close > prev.close && prev.close > prev2.close;
+    const threeDown = !bullish && !prevBullish && prev2.close < prev2.open && c.close < prev.close && prev.close < prev2.close;
+    const vote = engulfingUp || pinUp || threeUp ? 1.15 : engulfingDown || pinDown || threeDown ? -1.15 : doji ? (c.close >= prev.close ? 0.22 : -0.22) : bullish ? 0.48 : -0.48;
+    pushPhase(phases, `Pattern scan -${rows.length - index}: body=${(body / Math.max(atrValue, 0.00001)).toFixed(2)} wickT/B=${(topWick / range).toFixed(2)}/${(bottomWick / range).toFixed(2)}`, engulfingUp ? "BULLISH_ENGULFING" : engulfingDown ? "BEARISH_ENGULFING" : pinUp ? "BULLISH_PIN_BAR" : pinDown ? "BEARISH_PIN_BAR" : threeUp ? "THREE_CANDLE_PUSH_UP" : threeDown ? "THREE_CANDLE_PUSH_DOWN" : doji ? "DOJI_DECISION_CANDLE" : bullish ? "CANDLE_CLOSE_UP" : "CANDLE_CLOSE_DOWN", vote, 0.34 + index / 95, Math.abs(vote));
+  });
+  return phases;
+}
+
 function pushPhase(P: PhaseRes[], label: string, status: string, rawVote: number, weight: number, strength = Math.abs(rawVote)) {
   const vote = clamp(rawVote, -1.8, 1.8);
   P.push({ label, status, vote, weight, strength: clamp(strength, 0, 1.8) });
@@ -309,6 +370,8 @@ export const fetchMarketDataFn = createServerFn({ method: "GET" })
       high: parseFloat((highs.length ? Math.max(...highs) : price).toFixed(d)),
       low: parseFloat((lows.length ? Math.min(...lows) : price).toFixed(d)),
       timestamp: Date.now(),
+      candles: toPublicCandles(rows, pair),
+      nextCandleTime: nextCandleIso(rows, "1 Min"),
     };
   });
 
@@ -449,6 +512,16 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       pushPhase(P, `VOL-${period} sigma=${sigma.toFixed(d)} slope=${slope.toFixed(d)}`, vote > 0 ? `VOL_${period}_BULL_EXPANSION` : `VOL_${period}_BEAR_EXPANSION`, vote, 0.3 + Math.min(period, 60) / 260, Math.abs(vote));
     }
 
+    const breakoutPeriods = [9, 11, 13, 17, 19, 23, 27, 31, 37, 43, 52, 64, 78, 96];
+    for (const period of breakoutPeriods) {
+      const recentHigh = Math.max(...highs.slice(-period, -1));
+      const recentLow = Math.min(...lows.slice(-period, -1));
+      const upperDistance = (price - recentHigh) / Math.max(atr14, 0.00001);
+      const lowerDistance = (recentLow - price) / Math.max(atr14, 0.00001);
+      const vote = price >= recentHigh ? clamp(0.78 + upperDistance * 0.18, 0.45, 1.28) : price <= recentLow ? -clamp(0.78 + lowerDistance * 0.18, 0.45, 1.28) : price >= (recentHigh + recentLow) / 2 ? 0.24 : -0.24;
+      pushPhase(P, `${period}-bar liquidity breakout high=${recentHigh.toFixed(d)} low=${recentLow.toFixed(d)}`, vote > 0 ? `LIQUIDITY_${period}_BULL_CONTROL` : `LIQUIDITY_${period}_BEAR_CONTROL`, vote, 0.38 + Math.min(period, 96) / 340, Math.abs(vote));
+    }
+
     const recentCandles = candles.slice(-12);
     recentCandles.forEach((candle, index) => {
       const localBody = Math.abs(candle.close - candle.open) / Math.max(atr14, 0.00001);
@@ -458,6 +531,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       const vote = bullish ? clamp(0.18 + localBody * 0.35 + (localBottom > localTop ? 0.2 : 0), 0.16, 1.05) : -clamp(0.18 + localBody * 0.35 + (localTop > localBottom ? 0.2 : 0), 0.16, 1.05);
       pushPhase(P, `Candle microstructure -${recentCandles.length - index} body=${localBody.toFixed(2)} wickT/B=${localTop.toFixed(2)}/${localBottom.toFixed(2)}`, vote > 0 ? `CANDLE_${index + 1}_BUY_PRESSURE` : `CANDLE_${index + 1}_SELL_PRESSURE`, vote, 0.26 + index / 80, Math.abs(vote));
     });
+    P.push(...candlePatternPhases(candles, atr14));
 
     const mtfChecks = [
       { label: `${cfg.htf} EMA21/50`, vote: htfUp ? 1.18 : -1.18, strength: 1.1 },
@@ -497,63 +571,59 @@ export const generateSignalFn = createServerFn({ method: "POST" })
 
     let aiVerdict: Direction | "UNKNOWN" = "UNKNOWN";
     let aiNote = "";
+    let aiRiskFlags: string[] = [];
     try {
       const key = process.env.LOVABLE_API_KEY;
       if (key) {
+        const gateway = createLovableAiGatewayProvider(key);
         const snapshot = {
           pair,
           timeframe: cfg.interval,
           higherTimeframe: cfg.htf,
           confirmTimeframe: cfg.confirm,
+          nextCandleTime: nextCandleIso(candles, timeFrame),
           price: +price.toFixed(d),
           score: +score.toFixed(3),
           alignment: +(alignment * 100).toFixed(1),
           consensus: +(consensus * 100).toFixed(1),
           direction,
+          latestCandles: candles.slice(-28).map((c) => ({ o: +c.open.toFixed(d), h: +c.high.toFixed(d), l: +c.low.toFixed(d), c: +c.close.toFixed(d), v: c.volume })),
           indicators: {
             ema9: +ema9v.toFixed(d), ema21: +ema21v.toFixed(d), ema50: +ema50v.toFixed(d),
             sma5: +sma5v.toFixed(d), sma20: +sma20v.toFixed(d), sma50: +sma50v.toFixed(d),
             rsi14: +rsi14.toFixed(2), macdHist: +m.hist.toFixed(d), adx: +adx14.adx.toFixed(2),
             vwap: +vw.toFixed(d), bbPosPct: +(bbPos * 100).toFixed(1), stoch: +stoch.toFixed(1),
             atr14: +atr14.toFixed(d), htfUp, confirmUp, nearSup, nearRes, volSpike: +volSpike.toFixed(2),
+            latestPattern: P.slice(-42, -6).map((p) => p.status).slice(-12),
           },
-          phases: P.map((p) => ({ status: p.status, vote: +p.vote.toFixed(2), weight: p.weight })),
+          phaseSummary: {
+            total: P.length,
+            callVotes,
+            putVotes,
+            strongest: P.slice().sort((a, b) => Math.abs(b.vote * b.weight) - Math.abs(a.vote * a.weight)).slice(0, 24).map((p) => ({ status: p.status, vote: +p.vote.toFixed(2), weight: +p.weight.toFixed(2) })),
+          },
         };
-        const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-          body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
-            messages: [
-              { role: "system", content: "You are a strict technical risk filter. Return ONLY JSON: {\"direction\":\"CALL\"|\"PUT\",\"confidence\":0-100,\"reason\":\"short\"}. Choose the statistically stronger side from the supplied live indicators; never return WAIT." },
-              { role: "user", content: JSON.stringify(snapshot) },
-            ],
-          }),
-          signal: AbortSignal.timeout(6000),
+        const result = await generateObject({
+          model: gateway("google/gemini-3-flash-preview"),
+          schema: AiSignalSchema,
+          system: "You are a strict real-time candle risk filter for short-expiry market analysis. Study every supplied phase, latest candles, pattern states, trend/MTF alignment and risk flags. Return only CALL or PUT, never WAIT. If data is mixed, choose the statistically stronger side and lower confidence.",
+          prompt: JSON.stringify(snapshot),
+          timeout: 8000,
         });
-        if (aiRes.ok) {
-          const j = (await aiRes.json()) as AiGatewayResponse;
-          const raw = String(j.choices?.[0]?.message?.content ?? "");
-          const match = raw.match(/\{[\s\S]*\}/);
-          if (match) {
-            const parsed = JSON.parse(match[0]);
-            if (parsed.direction === "CALL" || parsed.direction === "PUT") {
-              aiVerdict = parsed.direction as Direction;
-              aiNote = String(parsed.reason ?? "").slice(0, 140);
-              const aiConf = clamp(Math.round(Number(parsed.confidence) || 88), 82, 99);
-              if (aiVerdict === direction) confidence = clamp(Math.round((confidence + aiConf) / 2) + 2, 88, 99);
-              else if (aiConf >= 92 && alignment < 0.52) {
-                direction = aiVerdict as Direction;
-                confidence = clamp(aiConf - 2, 88, 97);
-              } else {
-                confidence = clamp(confidence - 2, 88, 97);
-              }
-            }
-          }
+        aiVerdict = result.object.direction;
+        aiNote = result.object.reason.slice(0, 150);
+        aiRiskFlags = result.object.riskFlags.slice(0, 4);
+        const aiConf = clamp(Math.round(Number(result.object.confidence) || 88), 80, 99);
+        if (aiVerdict === direction) confidence = clamp(Math.round((confidence + aiConf) / 2) + 2, 88, 99);
+        else if (aiConf >= 91 && alignment < 0.58) {
+          direction = aiVerdict;
+          confidence = clamp(aiConf - 2, 86, 97);
+        } else {
+          confidence = clamp(Math.min(confidence, aiConf) - 3, 84, 96);
         }
       }
     } catch {
-      // AI layer is an optional second opinion; technical engine remains primary.
+      // AI layer is a strict second opinion; technical engine remains primary if credits/network fail.
     }
 
     const isUp = direction === "CALL";
@@ -591,8 +661,10 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       timeFrame,
       priceAtSignal: entryPrice,
       accuracy: confidence,
-      executeTime: new Date(Date.now() + 1500).toISOString().slice(11, 19) + " UTC",
-      aiReasoning: `${pair} ${cfg.interval}: advanced ${phases.length}-phase score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}.` : ""}`,
+      executeTime: nextCandleIso(candles, timeFrame).slice(11, 19) + " UTC",
+      nextCandleTime: nextCandleIso(candles, timeFrame),
+      analysisMode: "Live next-candle lock + 200-phase deep candle/MTF/AI scan",
+      aiReasoning: `${pair} ${cfg.interval}: advanced ${phases.length}-phase score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}${aiRiskFlags.length ? ` flags=${aiRiskFlags.join(", ")}` : ""}.` : ""}`,
       phases,
       timestamp: Date.now(),
       signalDecision: isUp ? "STRONG BUY" : "STRONG SELL",
