@@ -132,6 +132,7 @@ export default function App() {
   // Audio indicators simulated visually, but let's have a nice sound frequency generator using WebAudio if allowed
   const playBeep = (freq: number, type: 'sine' | 'square' | 'sawtooth' = 'sine', duration: number = 0.08) => {
     try {
+      if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
       const audioWindow = window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
       const AudioContextCtor = audioWindow.AudioContext || audioWindow.webkitAudioContext;
       if (!AudioContextCtor) return;
