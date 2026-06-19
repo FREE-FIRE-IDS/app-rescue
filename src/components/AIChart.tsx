@@ -58,7 +58,7 @@ export const AIChart: React.FC<AIChartProps> = ({
             <div className="w-1.5 h-1.5 rounded-full bg-[#00ff66]"></div>
           </div>
           <span className="text-xs font-mono font-black text-white uppercase tracking-widest">
-            AI POWERBASED CANDLESTICK CHART
+            LIVE AI CANDLESTICK ANALYZER
           </span>
         </div>
         <div className="flex items-center space-x-3 text-[10px] font-mono">
@@ -269,7 +269,7 @@ export const AIChart: React.FC<AIChartProps> = ({
 
       {/* Axis/Timeline Labels footer info */}
       <div className="flex justify-between items-center mt-2 border-t border-[#00ff66]/10 pt-2 text-[8px] font-mono text-[#00ff66]/50">
-        <span>UTC TIMELINE (1 TICK/SEC)</span>
+        <span>UTC TIMELINE (0.1S LIVE REFRESH)</span>
         <span className="flex items-center space-x-1">
           <span className="inline-block w-1.5 h-1.5 rounded bg-[#00ff66] opacity-30"></span>
           <span>BULLISH</span>
