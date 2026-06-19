@@ -45,9 +45,6 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [apiError, setApiError] = useState('');
-  const [settings] = useState({
-    delaySeconds: 5,
-  });
 
   // Server-function hooks for live market data + signal computation
   const fetchMarketData = useServerFn(fetchMarketDataFn);
