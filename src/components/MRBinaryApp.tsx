@@ -259,28 +259,34 @@ export default function App() {
     setActiveSignal(null);
     setApiError('');
     setCurrentVerificationPhase(0);
-    setTotalVerificationPhases(150);
-    setCurrentCheckingIndicator('ENGAGING AI COGNITIVE MATRIX...');
+    setTotalVerificationPhases(200);
+    setCurrentCheckingIndicator('LOCKING LIVE CANDLE CLOSE + NEXT CANDLE OPEN...');
 
     playBeep(600, 'sawtooth', 0.1);
 
     try {
+      const lockTime = getNextCandleTime(selectedTime);
+      let scanPhase = 0;
+      while (Date.now() < lockTime) {
+        scanPhase = (scanPhase % 200) + 1;
+        setCurrentVerificationPhase(scanPhase);
+        setCurrentCheckingIndicator(`REAL-TIME CANDLE ANALYSIS UNTIL NEXT OPEN: ${formatCountdown(lockTime - Date.now())}`);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      setCurrentVerificationPhase(200);
+      setCurrentCheckingIndicator('NEXT CANDLE OPENED — FINAL AI DEEP MARKET DECISION...');
       const signal: SignalResponse = await generateSignalFromMarket({
         data: { pair: selectedPair, timeFrame: selectedTime },
       });
 
-      // If calculation delay is configured, perform step-by-step visual scan representation
-      if (settings.delaySeconds > 0) {
-        const totalPhases = signal.phases?.length || 150;
-        setTotalVerificationPhases(totalPhases);
-        const delayPerPhase = (settings.delaySeconds * 1000) / totalPhases;
-        
-        for (let i = 0; i < totalPhases; i++) {
-          setCurrentVerificationPhase(i + 1);
-          setCurrentCheckingIndicator(signal.phases[i]?.indicator || 'Validating Multi-Factor Confluences...');
-          playBeep(500 + (i * 35), 'sine', 0.05);
-          await new Promise(resolve => setTimeout(resolve, delayPerPhase));
-        }
+      const totalPhases = signal.phases?.length || 200;
+      setTotalVerificationPhases(totalPhases);
+      for (let i = Math.max(0, totalPhases - 18); i < totalPhases; i++) {
+        setCurrentVerificationPhase(i + 1);
+        setCurrentCheckingIndicator(signal.phases[i]?.indicator || 'Validating final AI confluence gates...');
+        playBeep(500 + (i * 8), 'sine', 0.025);
+        await new Promise(resolve => setTimeout(resolve, 45));
       }
 
       setActiveSignal(signal);
