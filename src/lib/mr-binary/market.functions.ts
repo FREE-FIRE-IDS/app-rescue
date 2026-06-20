@@ -306,6 +306,39 @@ function rangePosition(price: number, highs: number[], lows: number[], period: n
   return h === l ? 0.5 : (price - l) / (h - l);
 }
 
+function pivotLevels(highs: number[], lows: number[], closes: number[], period = 24) {
+  const h = Math.max(...highs.slice(-period));
+  const l = Math.min(...lows.slice(-period));
+  const c = closes[closes.length - 2] ?? last(closes, 0);
+  const pivot = (h + l + c) / 3;
+  return { pivot, r1: 2 * pivot - l, s1: 2 * pivot - h, r2: pivot + (h - l), s2: pivot - (h - l) };
+}
+
+function fibonacciLevels(highs: number[], lows: number[], closes: number[], period = 89) {
+  const h = Math.max(...highs.slice(-period));
+  const l = Math.min(...lows.slice(-period));
+  const price = last(closes, 0);
+  const upSwing = price >= closes[closes.length - Math.min(period, closes.length)] || price >= (h + l) / 2;
+  const range = Math.max(h - l, 0.00001);
+  const levels = upSwing
+    ? { l236: h - range * 0.236, l382: h - range * 0.382, l500: h - range * 0.5, l618: h - range * 0.618 }
+    : { l236: l + range * 0.236, l382: l + range * 0.382, l500: l + range * 0.5, l618: l + range * 0.618 };
+  const nearest = Object.values(levels).reduce((best, level) => (Math.abs(price - level) < Math.abs(price - best) ? level : best), levels.l500);
+  return { high: h, low: l, upSwing, nearest, ...levels };
+}
+
+function liveCandlePressure(candle: Candle, previous: Candle, atrValue: number) {
+  const range = Math.max(candle.high - candle.low, atrValue * 0.1, 0.00001);
+  const body = candle.close - candle.open;
+  const bodyAbs = Math.abs(body);
+  const topWick = candle.high - Math.max(candle.open, candle.close);
+  const bottomWick = Math.min(candle.open, candle.close) - candle.low;
+  const closeLocation = (candle.close - candle.low) / range;
+  const continuation = candle.close - previous.close;
+  const pressure = body / Math.max(atrValue, 0.00001) + (closeLocation - 0.5) * 1.2 + (bottomWick - topWick) / range + continuation / Math.max(atrValue, 0.00001) * 0.35;
+  return { pressure, closeLocation, bodyRatio: bodyAbs / range, topWickRatio: topWick / range, bottomWickRatio: bottomWick / range };
+}
+
 function supertrendBias(highs: number[], lows: number[], closes: number[], atrValue: number, mult = 2.2) {
   const hl2 = (last(highs, 0) + last(lows, 0)) / 2;
   const upper = hl2 + atrValue * mult;
