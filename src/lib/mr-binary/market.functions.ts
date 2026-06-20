@@ -397,7 +397,6 @@ export const fetchMarketDataFn = createServerFn({ method: "GET" })
       low: parseFloat((lows.length ? Math.min(...lows) : price).toFixed(d)),
       timestamp: Date.now(),
       candles: toPublicCandles(rows, pair),
-      nextCandleTime: nextCandleIso(rows, "1 Min"),
     };
   });
 
@@ -697,7 +696,6 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       priceAtSignal: entryPrice,
       accuracy: confidence,
       executeTime: new Date().toISOString().slice(11, 19) + " UTC",
-      nextCandleTime: undefined,
       analysisMode: "LIVE AI candlestick analyzer + 200-phase current-entry scan",
       aiReasoning: `${displayPair(pair)} ${cfg.interval}: RSI/MACD/EMA9-21/Bollinger/Stochastic/Pivot/Fibonacci + live candle pressure checked across ${phases.length} phases. score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}${aiRiskFlags.length ? ` flags=${aiRiskFlags.join(", ")}` : ""}.` : ""}`,
       phases,
