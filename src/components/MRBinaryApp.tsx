@@ -607,6 +607,7 @@ export default function App() {
 
                   <div className="space-y-2.5" id="asset_selection_buttons">
                     {([
+                      { symbol: 'GOLD OTC', desc: 'Gold OTC contract feed model', category: 'OTC' },
                       { symbol: 'XAU/USD', desc: 'Spot Gold vs US Dollar', category: 'Commodity' },
                       { symbol: 'EUR/USD', desc: 'Euro vs US Dollar', category: 'Forex' },
                       { symbol: 'GBP/USD', desc: 'British Pound vs US Dollar', category: 'Forex' },
@@ -653,7 +654,7 @@ export default function App() {
                 <div className="bg-[#020603]/90 border border-[#00ff66]/20 p-5 rounded-lg" id="timeframe_and_controls">
                   <div className="mb-4 pb-4 border-b border-[#00ff66]/10 flex justify-between items-center bg-[#030904] p-3 rounded">
                     <span className="text-xs font-mono text-[#00ff66]/60">LOCKED SYSTEM CONTRACT:</span>
-                    <span className="text-sm font-black text-[#00ff66] bg-[#00ff66]/15 px-3 py-1 rounded border border-[#00ff66]/20 font-bold uppercase">{selectedPair} SPOT</span>
+                    <span className="text-sm font-black text-[#00ff66] bg-[#00ff66]/15 px-3 py-1 rounded border border-[#00ff66]/20 font-bold uppercase">{selectedPair}</span>
                   </div>
 
                   <h3 className="text-sm font-bold uppercase tracking-widest text-[#00ff66]/80 mb-4 flex items-center space-x-2">
@@ -848,7 +849,7 @@ export default function App() {
 
                             <div className="p-2.5 bg-[#030904] border border-[#00ff66]/15 rounded font-mono text-[10px]">
                               <span className="text-[#00ff66]/50 block uppercase font-bold">ACTIVE PAIR</span>
-                              <span className="text-xs font-bold text-[#00ff66] uppercase">{selectedPair} SPOT</span>
+                              <span className="text-xs font-bold text-[#00ff66] uppercase">{selectedPair}</span>
                             </div>
                           </div>
                         </div>
