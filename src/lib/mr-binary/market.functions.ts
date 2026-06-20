@@ -11,6 +11,7 @@ import type { CandleData, MarketPriceData, PhaseCheck, SignalResponse, TimeFrame
 
 const YAHOO_SYMBOL: Record<string, string> = {
   "XAU/USD": "GC=F",
+  "GOLD OTC": "GC=F",
   "BTC/USD": "BTC-USD",
   "USD/JPY": "JPY=X",
   "EUR/USD": "EURUSD=X",
@@ -83,6 +84,10 @@ function decimals(pair: string) {
   return pair.includes("EUR") || pair.includes("GBP") ? 5 : 2;
 }
 
+function displayPair(pair: string) {
+  return pair === "GOLD OTC" ? "GOLD OTC" : pair;
+}
+
 async function fetchYahoo(pair: string, interval: string, range: string) {
   const sym = YAHOO_SYMBOL[pair] ?? "GC=F";
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=${interval}&range=${range}`;
@@ -132,6 +137,11 @@ function toPublicCandles(candles: Candle[], pair: string): CandleData[] {
     volume: c.volume,
     isAiChecked: false,
   }));
+}
+
+function currentCandleIso(candles: Candle[]) {
+  const lastOpenMs = last(candles, { time: Math.floor(Date.now() / 1000) } as Candle).time * 1000;
+  return new Date(lastOpenMs).toISOString();
 }
 
 function nextCandleIso(candles: Candle[], timeFrame: TimeFrameOption) {
