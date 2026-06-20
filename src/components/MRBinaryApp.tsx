@@ -223,22 +223,31 @@ export default function App() {
     setApiError('');
     setCurrentVerificationPhase(0);
     setTotalVerificationPhases(200);
-    setCurrentCheckingIndicator('LOCKING LIVE CANDLE CLOSE + NEXT CANDLE OPEN...');
+    setCurrentCheckingIndicator('LIVE AI CANDLESTICK ANALYZER: RSI / MACD / EMA / BB / STOCH / PIVOT / FIB...');
 
     playBeep(600, 'sawtooth', 0.1);
 
     try {
-      const lockTime = getNextCandleTime(selectedTime);
-      let scanPhase = 0;
-      while (Date.now() < lockTime) {
-        scanPhase = (scanPhase % 200) + 1;
-        setCurrentVerificationPhase(scanPhase);
-        setCurrentCheckingIndicator(`REAL-TIME CANDLE ANALYSIS UNTIL NEXT OPEN: ${formatCountdown(lockTime - Date.now())}`);
-        await new Promise(resolve => setTimeout(resolve, 100));
+      const scanLabels = [
+        'Calculating RSI momentum and divergence...',
+        'Checking MACD histogram acceleration...',
+        'Comparing EMA 9 / EMA 21 trend stack...',
+        'Reading Bollinger Bands position and width...',
+        'Confirming Stochastic pressure...',
+        'Mapping Pivot Points support/resistance...',
+        'Mapping Fibonacci retracement zones...',
+        'Detecting latest candlestick patterns...',
+        'Analyzing live current candle pressure...',
+        'Sending complete phase snapshot to AI filter...',
+      ];
+      for (let i = 0; i < scanLabels.length; i++) {
+        setCurrentVerificationPhase(Math.round(((i + 1) / scanLabels.length) * 70));
+        setCurrentCheckingIndicator(scanLabels[i]);
+        await new Promise(resolve => setTimeout(resolve, 70));
       }
 
-      setCurrentVerificationPhase(200);
-      setCurrentCheckingIndicator('NEXT CANDLE OPENED — FINAL AI DEEP MARKET DECISION...');
+      setCurrentVerificationPhase(150);
+      setCurrentCheckingIndicator('FINAL CURRENT-ENTRY AI DEEP MARKET DECISION...');
       const signal: SignalResponse = await generateSignalFromMarket({
         data: { pair: selectedPair, timeFrame: selectedTime },
       });
