@@ -540,10 +540,10 @@ export default function App() {
                 </div>
                 <div>
                   <h1 className="text-xl md:text-2xl font-black text-[#00ff66] tracking-widest glow-green flex items-center gap-2 animate-pulse">
-                    AHAD GOLD SPOT <span className="text-[10px] bg-[#00ff66]/25 text-[#00ff66] px-2 py-0.5 rounded font-mono font-normal">XAU/USD SPOT</span>
+                    AHAD GOLD OTC <span className="text-[10px] bg-[#00ff66]/25 text-[#00ff66] px-2 py-0.5 rounded font-mono font-normal">{selectedPair}</span>
                   </h1>
                   <p className="text-xs text-[#00ff66]/60 font-mono tracking-wider">
-                    CREATED BY AHAD OFFICIAL • REAL-TIME SPOT GOLD FEED
+                    CREATED BY AHAD OFFICIAL • LIVE AI CANDLESTICK ANALYZER
                   </p>
                 </div>
               </div>
@@ -607,7 +607,7 @@ export default function App() {
 
                   <div className="space-y-2.5" id="asset_selection_buttons">
                     {([
-                      { symbol: 'GOLD OTC', desc: 'Gold OTC contract feed model', category: 'OTC' },
+                      { symbol: 'GOLD OTC', desc: 'Gold OTC live candle analyzer', category: 'OTC' },
                       { symbol: 'XAU/USD', desc: 'Spot Gold vs US Dollar', category: 'Commodity' },
                       { symbol: 'EUR/USD', desc: 'Euro vs US Dollar', category: 'Forex' },
                       { symbol: 'GBP/USD', desc: 'British Pound vs US Dollar', category: 'Forex' },
@@ -737,7 +737,7 @@ export default function App() {
                   <div className="flex justify-between items-center border-b border-[#00ff66]/10 pb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-[#00ff66] flex items-center space-x-2">
                       <Activity className="w-4 h-4" />
-                      <span>REAL-TIME SPOT {selectedPair} FEED</span>
+                      <span>REAL-TIME {selectedPair} FEED</span>
                     </h3>
                     <div className="flex items-center space-x-2">
                       <span className="w-1.5 h-1.5 bg-[#00ff66] rounded-full animate-ping" />
@@ -746,7 +746,7 @@ export default function App() {
                   </div>
 
                   <div className="bg-black/40 border border-[#00ff66]/15 p-4 rounded text-center">
-                    <span className="text-[10px] font-mono text-[#00ff66]/55 block uppercase tracking-wider mb-1">{selectedPair} SPOT LIVE PRICE</span>
+                    <span className="text-[10px] font-mono text-[#00ff66]/55 block uppercase tracking-wider mb-1">{selectedPair} LIVE PRICE</span>
                     <span className="text-3xl font-black text-white glow-green font-mono">${priceData.price.toFixed(selectedPair.includes('EUR') || selectedPair.includes('GBP') ? 5 : 2)}</span>
                     <div className="flex justify-center items-center gap-1.5 mt-2">
                       <span className={`w-2 h-2 rounded-full ${priceData.change >= 0 ? 'bg-[#00ff66]' : 'bg-red-500'}`} />
