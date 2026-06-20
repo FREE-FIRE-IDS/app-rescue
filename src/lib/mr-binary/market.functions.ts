@@ -628,11 +628,11 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       if (key) {
         const gateway = createLovableAiGatewayProvider(key);
         const snapshot = {
-          pair,
+          pair: displayPair(pair),
           timeframe: cfg.interval,
           higherTimeframe: cfg.htf,
           confirmTimeframe: cfg.confirm,
-          nextCandleTime: nextCandleIso(candles, timeFrame),
+          currentLiveCandleTime: currentCandleIso(candles),
           price: +price.toFixed(d),
           score: +score.toFixed(3),
           alignment: +(alignment * 100).toFixed(1),
@@ -644,6 +644,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
             sma5: +sma5v.toFixed(d), sma20: +sma20v.toFixed(d), sma50: +sma50v.toFixed(d),
             rsi14: +rsi14.toFixed(2), macdHist: +m.hist.toFixed(d), adx: +adx14.adx.toFixed(2),
             vwap: +vw.toFixed(d), bbPosPct: +(bbPos * 100).toFixed(1), stoch: +stoch.toFixed(1),
+            pivot: +pivots.pivot.toFixed(d), fibNearest: +fib.nearest.toFixed(d), liveCandlePressure: +livePressure.pressure.toFixed(2),
             atr14: +atr14.toFixed(d), htfUp, confirmUp, nearSup, nearRes, volSpike: +volSpike.toFixed(2),
             latestPattern: P.slice(-42, -6).map((p) => p.status).slice(-12),
           },
@@ -657,7 +658,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
         const result = await generateObject({
           model: gateway("google/gemini-3-flash-preview"),
           schema: AiSignalSchema,
-          system: "You are a strict real-time candle risk filter for short-expiry market analysis. Study every supplied phase, latest candles, pattern states, trend/MTF alignment and risk flags. Return only CALL or PUT, never WAIT. If data is mixed, choose the statistically stronger side and lower confidence.",
+          system: "You are a strict LIVE AI candlestick analyzer for immediate short-expiry market analysis. Study RSI, MACD, EMA 9/21, Bollinger Bands, Stochastic, Pivot Points, Fibonacci, current live candle pressure, past candles, pattern states, trend/MTF alignment and risk flags. Return only CALL or PUT, never WAIT or next-candle prediction. If data is mixed, choose the statistically stronger current entry side and lower confidence.",
           prompt: JSON.stringify(snapshot),
           timeout: 8000,
         });
@@ -712,10 +713,10 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       timeFrame,
       priceAtSignal: entryPrice,
       accuracy: confidence,
-      executeTime: nextCandleIso(candles, timeFrame).slice(11, 19) + " UTC",
-      nextCandleTime: nextCandleIso(candles, timeFrame),
-      analysisMode: "Live next-candle lock + 200-phase deep candle/MTF/AI scan",
-      aiReasoning: `${pair} ${cfg.interval}: advanced ${phases.length}-phase score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}${aiRiskFlags.length ? ` flags=${aiRiskFlags.join(", ")}` : ""}.` : ""}`,
+      executeTime: new Date().toISOString().slice(11, 19) + " UTC",
+      nextCandleTime: undefined,
+      analysisMode: "LIVE AI candlestick analyzer + 200-phase current-entry scan",
+      aiReasoning: `${displayPair(pair)} ${cfg.interval}: RSI/MACD/EMA9-21/Bollinger/Stochastic/Pivot/Fibonacci + live candle pressure checked across ${phases.length} phases. score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}${aiRiskFlags.length ? ` flags=${aiRiskFlags.join(", ")}` : ""}.` : ""}`,
       phases,
       timestamp: Date.now(),
       signalDecision: isUp ? "STRONG BUY" : "STRONG SELL",
