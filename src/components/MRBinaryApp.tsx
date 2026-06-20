@@ -28,7 +28,7 @@ export default function App() {
   const fetchMarketData = useServerFn(fetchMarketDataFn);
   const generateSignalFromMarket = useServerFn(generateSignalFn);
   
-  const [selectedPair, setSelectedPair] = useState<string>('XAU/USD');
+  const [selectedPair, setSelectedPair] = useState<string>('GOLD OTC');
 
   // Deterministic candle placeholders only until the live feed starts updating them.
   const generateCandles = (symbol: string): CandleData[] => {
@@ -55,7 +55,7 @@ export default function App() {
   const [priceData, setPriceData] = useState<MarketPriceData>({
     success: true,
     source: 'Initializing Stream...',
-    pair: 'XAU/USD',
+    pair: 'GOLD OTC',
     price: 2378.45,
     change: 0.12,
     high: 2383.69,
@@ -64,7 +64,7 @@ export default function App() {
   });
 
   // Initialize historical candlestick chart blocks, then replace with live candles from market feed.
-  const [candles, setCandles] = useState<CandleData[]>(() => generateCandles('XAU/USD'));
+  const [candles, setCandles] = useState<CandleData[]>(() => generateCandles('GOLD OTC'));
 
   const updateCandles = (newPrice: number) => {
     setCandles(prev => {
@@ -304,7 +304,7 @@ export default function App() {
                   AHAD GOLD OTC TERMINAL
                 </h1>
                 <p className="text-[10px] text-[#00ff66]/60 font-mono mt-1 tracking-wider">
-                  REAL-TIME XAU/USD GOLD OTC ANALYTICS
+                  LIVE GOLD OTC CANDLESTICK ANALYTICS
                 </p>
               </div>
 
@@ -414,7 +414,7 @@ export default function App() {
                 className="w-[350px] md:w-[500px] h-[350px] md:h-[500px] rounded-full border border-emerald-500/10 absolute flex items-center justify-center font-mono text-[8px] tracking-[0.4em] text-[#00ff66]/20 uppercase"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                AHAD QUANTITATIVE PLATFORM • XAU/USD GOLD OTC ENGINE •
+                AHAD QUANTITATIVE PLATFORM • GOLD OTC CANDLE ENGINE •
               </motion.div>
             </div>
 
@@ -508,7 +508,7 @@ export default function App() {
                 <div className="w-full max-w-lg mx-auto bg-black/60 border border-[#00ff66]/15 p-3.5 mt-8 rounded-lg h-24 overflow-hidden text-left font-mono text-[9px] text-emerald-500/70 leading-relaxed">
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#00ff66] animate-ping" />
-                    <span>[CONNECTION] DIRECT XAU/USD OTC SPOT FEED SYNCHRONIZED...</span>
+                    <span>[CONNECTION] DIRECT GOLD OTC CANDLE FEED SYNCHRONIZED...</span>
                   </div>
                   <div>[MATH] CALCULATING HISTORICAL VOLATILITY SPECTRA: SUCCESS</div>
                   {introProgress > 25 && <div>[SPEED] LIVE FEED LATENCY CHECK: SYNCHRONIZED</div>}
