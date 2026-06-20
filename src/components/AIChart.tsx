@@ -62,7 +62,7 @@ export const AIChart: React.FC<AIChartProps> = ({
           </span>
         </div>
         <div className="flex items-center space-x-3 text-[10px] font-mono">
-          <span className="text-white/60">FEED: <span className="text-emerald-400">{pair} SPOT</span></span>
+          <span className="text-white/60">FEED: <span className="text-emerald-400">{pair}</span></span>
           <span className="text-white/30">|</span>
           <span className="text-white/60">TICK: <span className="text-[#00ff66]">LIVE</span></span>
         </div>

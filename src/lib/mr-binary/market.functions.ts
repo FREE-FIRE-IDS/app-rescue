@@ -11,6 +11,7 @@ import type { CandleData, MarketPriceData, PhaseCheck, SignalResponse, TimeFrame
 
 const YAHOO_SYMBOL: Record<string, string> = {
   "XAU/USD": "GC=F",
+  "GOLD OTC": "GC=F",
   "BTC/USD": "BTC-USD",
   "USD/JPY": "JPY=X",
   "EUR/USD": "EURUSD=X",
@@ -23,14 +24,6 @@ const TF_TO_YAHOO: Record<TimeFrameOption, { interval: string; range: string; ht
   "5 Min": { interval: "5m", range: "5d", htf: "30m", htfRange: "1mo", confirm: "60m", confirmRange: "1mo" },
   "15 Min": { interval: "15m", range: "5d", htf: "60m", htfRange: "1mo", confirm: "1d", confirmRange: "3mo" },
   "30 Min": { interval: "30m", range: "1mo", htf: "1d", htfRange: "3mo", confirm: "1d", confirmRange: "6mo" },
-};
-
-const TF_SECONDS: Record<TimeFrameOption, number> = {
-  "1 Min": 60,
-  "2 Min": 120,
-  "5 Min": 300,
-  "15 Min": 900,
-  "30 Min": 1800,
 };
 
 interface YahooChart {
@@ -81,6 +74,10 @@ const AiSignalSchema = z.object({
 
 function decimals(pair: string) {
   return pair.includes("EUR") || pair.includes("GBP") ? 5 : 2;
+}
+
+function displayPair(pair: string) {
+  return pair === "GOLD OTC" ? "GOLD OTC" : pair;
 }
 
 async function fetchYahoo(pair: string, interval: string, range: string) {
@@ -134,13 +131,9 @@ function toPublicCandles(candles: Candle[], pair: string): CandleData[] {
   }));
 }
 
-function nextCandleIso(candles: Candle[], timeFrame: TimeFrameOption) {
-  const seconds = TF_SECONDS[timeFrame] ?? 60;
+function currentCandleIso(candles: Candle[]) {
   const lastOpenMs = last(candles, { time: Math.floor(Date.now() / 1000) } as Candle).time * 1000;
-  const alignedNext = lastOpenMs + seconds * 1000;
-  const now = Date.now();
-  const nextMs = alignedNext > now ? alignedNext : Math.ceil(now / (seconds * 1000)) * seconds * 1000;
-  return new Date(nextMs).toISOString();
+  return new Date(lastOpenMs).toISOString();
 }
 
 function last<T>(arr: T[], fallback: T) {
@@ -296,6 +289,39 @@ function rangePosition(price: number, highs: number[], lows: number[], period: n
   return h === l ? 0.5 : (price - l) / (h - l);
 }
 
+function pivotLevels(highs: number[], lows: number[], closes: number[], period = 24) {
+  const h = Math.max(...highs.slice(-period));
+  const l = Math.min(...lows.slice(-period));
+  const c = closes[closes.length - 2] ?? last(closes, 0);
+  const pivot = (h + l + c) / 3;
+  return { pivot, r1: 2 * pivot - l, s1: 2 * pivot - h, r2: pivot + (h - l), s2: pivot - (h - l) };
+}
+
+function fibonacciLevels(highs: number[], lows: number[], closes: number[], period = 89) {
+  const h = Math.max(...highs.slice(-period));
+  const l = Math.min(...lows.slice(-period));
+  const price = last(closes, 0);
+  const upSwing = price >= closes[closes.length - Math.min(period, closes.length)] || price >= (h + l) / 2;
+  const range = Math.max(h - l, 0.00001);
+  const levels = upSwing
+    ? { l236: h - range * 0.236, l382: h - range * 0.382, l500: h - range * 0.5, l618: h - range * 0.618 }
+    : { l236: l + range * 0.236, l382: l + range * 0.382, l500: l + range * 0.5, l618: l + range * 0.618 };
+  const nearest = Object.values(levels).reduce((best, level) => (Math.abs(price - level) < Math.abs(price - best) ? level : best), levels.l500);
+  return { high: h, low: l, upSwing, nearest, ...levels };
+}
+
+function liveCandlePressure(candle: Candle, previous: Candle, atrValue: number) {
+  const range = Math.max(candle.high - candle.low, atrValue * 0.1, 0.00001);
+  const body = candle.close - candle.open;
+  const bodyAbs = Math.abs(body);
+  const topWick = candle.high - Math.max(candle.open, candle.close);
+  const bottomWick = Math.min(candle.open, candle.close) - candle.low;
+  const closeLocation = (candle.close - candle.low) / range;
+  const continuation = candle.close - previous.close;
+  const pressure = body / Math.max(atrValue, 0.00001) + (closeLocation - 0.5) * 1.2 + (bottomWick - topWick) / range + continuation / Math.max(atrValue, 0.00001) * 0.35;
+  return { pressure, closeLocation, bodyRatio: bodyAbs / range, topWickRatio: topWick / range, bottomWickRatio: bottomWick / range };
+}
+
 function supertrendBias(highs: number[], lows: number[], closes: number[], atrValue: number, mult = 2.2) {
   const hl2 = (last(highs, 0) + last(lows, 0)) / 2;
   const upper = hl2 + atrValue * mult;
@@ -371,7 +397,6 @@ export const fetchMarketDataFn = createServerFn({ method: "GET" })
       low: parseFloat((lows.length ? Math.min(...lows) : price).toFixed(d)),
       timestamp: Date.now(),
       candles: toPublicCandles(rows, pair),
-      nextCandleTime: nextCandleIso(rows, "1 Min"),
     };
   });
 
@@ -420,7 +445,12 @@ export const generateSignalFn = createServerFn({ method: "POST" })
     const slope20 = regressionSlope(closes, 20);
     const slopeStrength = Math.abs(slope20) / Math.max(atr14, Math.abs(price) * 0.0001);
     const supertrend = supertrendBias(highs, lows, closes, atr14);
+    const pivots = pivotLevels(highs, lows, closes, Math.min(48, closes.length));
+    const fib = fibonacciLevels(highs, lows, closes, Math.min(120, closes.length));
     const lastOpen = last(opens, lastClose);
+    const liveCandle = last(candles, { open: price, high: price, low: price, close: price, volume: 0, time: Math.floor(Date.now() / 1000) });
+    const previousCandle = candles[candles.length - 2] ?? liveCandle;
+    const livePressure = liveCandlePressure(liveCandle, previousCandle, atr14);
     const bodyPct = Math.abs(lastClose - lastOpen) / Math.max(atr14, Math.abs(price) * 0.0001);
     const wickTop = (last(highs, lastClose) - Math.max(lastOpen, lastClose)) / Math.max(atr14, Math.abs(price) * 0.0001);
     const wickBottom = (Math.min(lastOpen, lastClose) - last(lows, lastClose)) / Math.max(atr14, Math.abs(price) * 0.0001);
@@ -453,6 +483,9 @@ export const generateSignalFn = createServerFn({ method: "POST" })
     pushPhase(P, `VWAP(50)=${vw.toFixed(d)} price relation`, price > vw ? "ABOVE_VWAP" : "BELOW_VWAP", price > vw ? 0.95 : -0.95, 0.95, Math.abs(price - vw) / Math.max(atr14, 0.00001));
     pushPhase(P, `BOLLINGER pos=${(bbPos * 100).toFixed(0)}% width=${bb.width.toFixed(d)}`, bbPos > 0.58 && bbPos < 0.92 ? "BB_BULL_CHANNEL" : bbPos < 0.42 && bbPos > 0.08 ? "BB_BEAR_CHANNEL" : bbPos <= 0.08 ? "BB_DEEP_SUPPORT" : bbPos >= 0.92 ? "BB_DEEP_RESISTANCE" : "BB_MID", bbPos <= 0.08 ? 0.55 : bbPos >= 0.92 ? -0.55 : bbPos > 0.58 ? 0.85 : bbPos < 0.42 ? -0.85 : 0, 0.9, Math.abs(bbPos - 0.5) * 2);
     pushPhase(P, `STOCHASTIC %K=${stoch.toFixed(1)}`, stoch >= 55 && stoch <= 88 ? "STOCH_BULL_FLOW" : stoch <= 45 && stoch >= 12 ? "STOCH_BEAR_FLOW" : stoch > 88 ? "STOCH_EXHAUST_UP" : stoch < 12 ? "STOCH_EXHAUST_DOWN" : "STOCH_MID", stoch > 88 ? -0.45 : stoch < 12 ? 0.45 : stoch >= 55 ? 0.75 : stoch <= 45 ? -0.75 : 0, 0.8, Math.abs(stoch - 50) / 35);
+    pushPhase(P, `PIVOT POINTS P=${pivots.pivot.toFixed(d)} S1=${pivots.s1.toFixed(d)} R1=${pivots.r1.toFixed(d)}`, price > pivots.pivot && price < pivots.r2 ? "PIVOT_BULLISH_CONTROL" : price < pivots.pivot && price > pivots.s2 ? "PIVOT_BEARISH_CONTROL" : price <= pivots.s1 ? "PIVOT_SUPPORT_REACTION" : "PIVOT_RESISTANCE_REACTION", price <= pivots.s1 ? 0.65 : price >= pivots.r1 ? -0.65 : price >= pivots.pivot ? 0.92 : -0.92, 1.05, Math.abs(price - pivots.pivot) / Math.max(atr14, 0.00001));
+    pushPhase(P, `FIBONACCI ${fib.upSwing ? "upswing" : "downswing"} nearest=${fib.nearest.toFixed(d)} 38.2=${fib.l382.toFixed(d)} 61.8=${fib.l618.toFixed(d)}`, fib.upSwing ? (price >= fib.l500 ? "FIB_UPSWING_HOLD" : "FIB_UPSWING_DEEP_PULLBACK") : (price <= fib.l500 ? "FIB_DOWNSWING_HOLD" : "FIB_DOWNSWING_DEEP_PULLBACK"), fib.upSwing ? (price >= fib.l500 ? 0.88 : -0.38) : (price <= fib.l500 ? -0.88 : 0.38), 1.0, Math.abs(price - fib.nearest) / Math.max(atr14, 0.00001));
+    pushPhase(P, `LIVE CURRENT CANDLE pressure=${livePressure.pressure.toFixed(2)} closeLoc=${(livePressure.closeLocation * 100).toFixed(0)}% body=${(livePressure.bodyRatio * 100).toFixed(0)}%`, livePressure.pressure >= 0.18 ? "LIVE_CANDLE_BUY_PRESSURE" : livePressure.pressure <= -0.18 ? "LIVE_CANDLE_SELL_PRESSURE" : liveCandle.close >= liveCandle.open ? "LIVE_CANDLE_WEAK_BUY" : "LIVE_CANDLE_WEAK_SELL", livePressure.pressure >= 0 ? clamp(0.45 + Math.abs(livePressure.pressure) * 0.38, 0.35, 1.55) : -clamp(0.45 + Math.abs(livePressure.pressure) * 0.38, 0.35, 1.55), 1.55, Math.abs(livePressure.pressure));
     pushPhase(P, `LINEAR REGRESSION slope=${slope20.toFixed(d)} (${(slopeStrength * 100).toFixed(0)}% ATR/bar)`, slope20 > 0 ? "SLOPE_UP" : "SLOPE_DOWN", slope20 > 0 ? clamp(0.45 + slopeStrength, 0.45, 1.45) : -clamp(0.45 + slopeStrength, 0.45, 1.45), 1.15, slopeStrength);
     pushPhase(P, `MOMENTUM 3-bar=${momentum3.toFixed(d)} 10-bar=${momentum10.toFixed(d)}`, momentum3 > 0 && momentum10 > 0 ? "DUAL_MOM_UP" : momentum3 < 0 && momentum10 < 0 ? "DUAL_MOM_DOWN" : "MOMENTUM_CONFLICT", momentum3 > 0 && momentum10 > 0 ? 1.15 : momentum3 < 0 && momentum10 < 0 ? -1.15 : momentum3 > 0 ? 0.25 : -0.25, 1.05, (Math.abs(momentum3) + Math.abs(momentum10)) / Math.max(atr14 * 2, 0.00001));
     pushPhase(P, `SUPERTREND bias lower=${supertrend.lower.toFixed(d)} upper=${supertrend.upper.toFixed(d)}`, supertrend.up ? "SUPERTREND_CALL" : "SUPERTREND_PUT", supertrend.up ? 1.35 : -1.35, 1.35, 1.2);
@@ -577,11 +610,11 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       if (key) {
         const gateway = createLovableAiGatewayProvider(key);
         const snapshot = {
-          pair,
+          pair: displayPair(pair),
           timeframe: cfg.interval,
           higherTimeframe: cfg.htf,
           confirmTimeframe: cfg.confirm,
-          nextCandleTime: nextCandleIso(candles, timeFrame),
+          currentLiveCandleTime: currentCandleIso(candles),
           price: +price.toFixed(d),
           score: +score.toFixed(3),
           alignment: +(alignment * 100).toFixed(1),
@@ -593,6 +626,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
             sma5: +sma5v.toFixed(d), sma20: +sma20v.toFixed(d), sma50: +sma50v.toFixed(d),
             rsi14: +rsi14.toFixed(2), macdHist: +m.hist.toFixed(d), adx: +adx14.adx.toFixed(2),
             vwap: +vw.toFixed(d), bbPosPct: +(bbPos * 100).toFixed(1), stoch: +stoch.toFixed(1),
+            pivot: +pivots.pivot.toFixed(d), fibNearest: +fib.nearest.toFixed(d), liveCandlePressure: +livePressure.pressure.toFixed(2),
             atr14: +atr14.toFixed(d), htfUp, confirmUp, nearSup, nearRes, volSpike: +volSpike.toFixed(2),
             latestPattern: P.slice(-42, -6).map((p) => p.status).slice(-12),
           },
@@ -606,7 +640,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
         const result = await generateObject({
           model: gateway("google/gemini-3-flash-preview"),
           schema: AiSignalSchema,
-          system: "You are a strict real-time candle risk filter for short-expiry market analysis. Study every supplied phase, latest candles, pattern states, trend/MTF alignment and risk flags. Return only CALL or PUT, never WAIT. If data is mixed, choose the statistically stronger side and lower confidence.",
+          system: "You are a strict LIVE AI candlestick analyzer for immediate short-expiry market analysis. Study RSI, MACD, EMA 9/21, Bollinger Bands, Stochastic, Pivot Points, Fibonacci, current live candle pressure, past candles, pattern states, trend/MTF alignment and risk flags. Return only CALL or PUT, never WAIT or next-candle prediction. If data is mixed, choose the statistically stronger current entry side and lower confidence.",
           prompt: JSON.stringify(snapshot),
           timeout: 8000,
         });
@@ -661,10 +695,9 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       timeFrame,
       priceAtSignal: entryPrice,
       accuracy: confidence,
-      executeTime: nextCandleIso(candles, timeFrame).slice(11, 19) + " UTC",
-      nextCandleTime: nextCandleIso(candles, timeFrame),
-      analysisMode: "Live next-candle lock + 200-phase deep candle/MTF/AI scan",
-      aiReasoning: `${pair} ${cfg.interval}: advanced ${phases.length}-phase score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}${aiRiskFlags.length ? ` flags=${aiRiskFlags.join(", ")}` : ""}.` : ""}`,
+      executeTime: new Date().toISOString().slice(11, 19) + " UTC",
+      analysisMode: "LIVE AI candlestick analyzer + 200-phase current-entry scan",
+      aiReasoning: `${displayPair(pair)} ${cfg.interval}: RSI/MACD/EMA9-21/Bollinger/Stochastic/Pivot/Fibonacci + live candle pressure checked across ${phases.length} phases. score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}${aiRiskFlags.length ? ` flags=${aiRiskFlags.join(", ")}` : ""}.` : ""}`,
       phases,
       timestamp: Date.now(),
       signalDecision: isUp ? "STRONG BUY" : "STRONG SELL",

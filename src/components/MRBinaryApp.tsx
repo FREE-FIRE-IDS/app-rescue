@@ -16,28 +16,6 @@ import { useServerFn } from '@tanstack/react-start';
 import { fetchMarketDataFn, generateSignalFn } from '@/lib/mr-binary/market.functions';
 import { AIChart } from './AIChart';
 
-const TIMEFRAME_MS: Record<TimeFrameOption, number> = {
-  '1 Min': 60_000,
-  '2 Min': 120_000,
-  '5 Min': 300_000,
-  '15 Min': 900_000,
-  '30 Min': 1_800_000,
-};
-
-const getNextCandleTime = (timeFrame: TimeFrameOption, now = Date.now()) => {
-  const span = TIMEFRAME_MS[timeFrame] ?? 60_000;
-  return Math.ceil(now / span) * span;
-};
-
-const formatCountdown = (ms: number) => {
-  const safe = Math.max(0, ms);
-  const totalSeconds = Math.floor(safe / 1000);
-  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-  const tenths = Math.floor((safe % 1000) / 100);
-  return `${minutes}:${seconds}.${tenths}`;
-};
-
 export default function App() {
   // Login & Flow State
   const [screen, setScreen] = useState<ScreenState>('INTRO_ANIMATION');
@@ -50,7 +28,7 @@ export default function App() {
   const fetchMarketData = useServerFn(fetchMarketDataFn);
   const generateSignalFromMarket = useServerFn(generateSignalFn);
   
-  const [selectedPair, setSelectedPair] = useState<string>('XAU/USD');
+  const [selectedPair, setSelectedPair] = useState<string>('GOLD OTC');
 
   // Deterministic candle placeholders only until the live feed starts updating them.
   const generateCandles = (symbol: string): CandleData[] => {
@@ -77,7 +55,7 @@ export default function App() {
   const [priceData, setPriceData] = useState<MarketPriceData>({
     success: true,
     source: 'Initializing Stream...',
-    pair: 'XAU/USD',
+    pair: 'GOLD OTC',
     price: 2378.45,
     change: 0.12,
     high: 2383.69,
@@ -86,7 +64,7 @@ export default function App() {
   });
 
   // Initialize historical candlestick chart blocks, then replace with live candles from market feed.
-  const [candles, setCandles] = useState<CandleData[]>(() => generateCandles('XAU/USD'));
+  const [candles, setCandles] = useState<CandleData[]>(() => generateCandles('GOLD OTC'));
 
   const updateCandles = (newPrice: number) => {
     setCandles(prev => {
@@ -104,7 +82,7 @@ export default function App() {
       // Cycle candlestick block every 12 updates to scroll chart
       if (last.volume % 12 === 0) {
         const nextOpen = last.close;
-        const nextCandle: CandleData = {
+        const rollingCandle: CandleData = {
           time: 'now',
           open: nextOpen,
           high: nextOpen,
@@ -113,7 +91,7 @@ export default function App() {
           volume: 1,
           isAiChecked: true
         };
-        return [...copy.slice(1), nextCandle];
+        return [...copy.slice(1), rollingCandle];
       }
       return copy;
     });
@@ -126,8 +104,6 @@ export default function App() {
   const [totalVerificationPhases, setTotalVerificationPhases] = useState(200);
   const [currentCheckingIndicator, setCurrentCheckingIndicator] = useState('');
   const [activeSignal, setActiveSignal] = useState<SignalResponse | null>(null);
-  const [nextCandleTime, setNextCandleTime] = useState(() => getNextCandleTime('1 Min'));
-  const [countdownMs, setCountdownMs] = useState(() => Math.max(0, getNextCandleTime('1 Min') - Date.now()));
 
   // Audio indicators simulated visually, but let's have a nice sound frequency generator using WebAudio if allowed
   const playBeep = (freq: number, type: 'sine' | 'square' | 'sawtooth' = 'sine', duration: number = 0.08) => {
@@ -177,17 +153,6 @@ export default function App() {
     const interval = setInterval(tick, 100);
     return () => clearInterval(interval);
   }, [selectedPair, fetchMarketData]);
-
-  useEffect(() => {
-    const syncCountdown = () => {
-      const next = getNextCandleTime(selectedTime);
-      setNextCandleTime(next);
-      setCountdownMs(Math.max(0, next - Date.now()));
-    };
-    syncCountdown();
-    const interval = setInterval(syncCountdown, 100);
-    return () => clearInterval(interval);
-  }, [selectedTime]);
 
   // Operator authentication — restored AHAD credentials
   const handleLogin = (e: React.FormEvent) => {
@@ -258,22 +223,31 @@ export default function App() {
     setApiError('');
     setCurrentVerificationPhase(0);
     setTotalVerificationPhases(200);
-    setCurrentCheckingIndicator('LOCKING LIVE CANDLE CLOSE + NEXT CANDLE OPEN...');
+    setCurrentCheckingIndicator('LIVE AI CANDLESTICK ANALYZER: RSI / MACD / EMA / BB / STOCH / PIVOT / FIB...');
 
     playBeep(600, 'sawtooth', 0.1);
 
     try {
-      const lockTime = getNextCandleTime(selectedTime);
-      let scanPhase = 0;
-      while (Date.now() < lockTime) {
-        scanPhase = (scanPhase % 200) + 1;
-        setCurrentVerificationPhase(scanPhase);
-        setCurrentCheckingIndicator(`REAL-TIME CANDLE ANALYSIS UNTIL NEXT OPEN: ${formatCountdown(lockTime - Date.now())}`);
-        await new Promise(resolve => setTimeout(resolve, 100));
+      const scanLabels = [
+        'Calculating RSI momentum and divergence...',
+        'Checking MACD histogram acceleration...',
+        'Comparing EMA 9 / EMA 21 trend stack...',
+        'Reading Bollinger Bands position and width...',
+        'Confirming Stochastic pressure...',
+        'Mapping Pivot Points support/resistance...',
+        'Mapping Fibonacci retracement zones...',
+        'Detecting latest candlestick patterns...',
+        'Analyzing live current candle pressure...',
+        'Sending complete phase snapshot to AI filter...',
+      ];
+      for (let i = 0; i < scanLabels.length; i++) {
+        setCurrentVerificationPhase(Math.round(((i + 1) / scanLabels.length) * 70));
+        setCurrentCheckingIndicator(scanLabels[i]);
+        await new Promise(resolve => setTimeout(resolve, 70));
       }
 
-      setCurrentVerificationPhase(200);
-      setCurrentCheckingIndicator('NEXT CANDLE OPENED — FINAL AI DEEP MARKET DECISION...');
+      setCurrentVerificationPhase(150);
+      setCurrentCheckingIndicator('FINAL CURRENT-ENTRY AI DEEP MARKET DECISION...');
       const signal: SignalResponse = await generateSignalFromMarket({
         data: { pair: selectedPair, timeFrame: selectedTime },
       });
@@ -330,7 +304,7 @@ export default function App() {
                   AHAD GOLD OTC TERMINAL
                 </h1>
                 <p className="text-[10px] text-[#00ff66]/60 font-mono mt-1 tracking-wider">
-                  REAL-TIME XAU/USD GOLD OTC ANALYTICS
+                  LIVE GOLD OTC CANDLESTICK ANALYTICS
                 </p>
               </div>
 
@@ -440,7 +414,7 @@ export default function App() {
                 className="w-[350px] md:w-[500px] h-[350px] md:h-[500px] rounded-full border border-emerald-500/10 absolute flex items-center justify-center font-mono text-[8px] tracking-[0.4em] text-[#00ff66]/20 uppercase"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                AHAD QUANTITATIVE PLATFORM • XAU/USD GOLD OTC ENGINE •
+                AHAD QUANTITATIVE PLATFORM • GOLD OTC CANDLE ENGINE •
               </motion.div>
             </div>
 
@@ -534,7 +508,7 @@ export default function App() {
                 <div className="w-full max-w-lg mx-auto bg-black/60 border border-[#00ff66]/15 p-3.5 mt-8 rounded-lg h-24 overflow-hidden text-left font-mono text-[9px] text-emerald-500/70 leading-relaxed">
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#00ff66] animate-ping" />
-                    <span>[CONNECTION] DIRECT XAU/USD OTC SPOT FEED SYNCHRONIZED...</span>
+                    <span>[CONNECTION] DIRECT GOLD OTC CANDLE FEED SYNCHRONIZED...</span>
                   </div>
                   <div>[MATH] CALCULATING HISTORICAL VOLATILITY SPECTRA: SUCCESS</div>
                   {introProgress > 25 && <div>[SPEED] LIVE FEED LATENCY CHECK: SYNCHRONIZED</div>}
@@ -566,10 +540,10 @@ export default function App() {
                 </div>
                 <div>
                   <h1 className="text-xl md:text-2xl font-black text-[#00ff66] tracking-widest glow-green flex items-center gap-2 animate-pulse">
-                    AHAD GOLD SPOT <span className="text-[10px] bg-[#00ff66]/25 text-[#00ff66] px-2 py-0.5 rounded font-mono font-normal">XAU/USD SPOT</span>
+                    AHAD GOLD OTC <span className="text-[10px] bg-[#00ff66]/25 text-[#00ff66] px-2 py-0.5 rounded font-mono font-normal">{selectedPair}</span>
                   </h1>
                   <p className="text-xs text-[#00ff66]/60 font-mono tracking-wider">
-                    CREATED BY AHAD OFFICIAL • REAL-TIME SPOT GOLD FEED
+                    CREATED BY AHAD OFFICIAL • LIVE AI CANDLESTICK ANALYZER
                   </p>
                 </div>
               </div>
@@ -588,8 +562,8 @@ export default function App() {
                 </div>
                 <div className="h-4 w-[1px] bg-[#00ff66]/20 hidden sm:block"></div>
                 <div className="flex items-center space-x-2 text-[10px] uppercase">
-                  <span className="text-[#00ff66]/55">NEXT CANDLE</span>
-                  <span className="text-white font-black tabular-nums">{formatCountdown(countdownMs)}</span>
+                  <span className="text-[#00ff66]/55">LIVE CANDLE</span>
+                  <span className="text-white font-black tabular-nums">0.1S SCAN</span>
                 </div>
                 <div className="h-4 w-[1px] bg-[#00ff66]/20 hidden sm:block"></div>
                 <button
@@ -633,6 +607,7 @@ export default function App() {
 
                   <div className="space-y-2.5" id="asset_selection_buttons">
                     {([
+                      { symbol: 'GOLD OTC', desc: 'Gold OTC live candle analyzer', category: 'OTC' },
                       { symbol: 'XAU/USD', desc: 'Spot Gold vs US Dollar', category: 'Commodity' },
                       { symbol: 'EUR/USD', desc: 'Euro vs US Dollar', category: 'Forex' },
                       { symbol: 'GBP/USD', desc: 'British Pound vs US Dollar', category: 'Forex' },
@@ -679,7 +654,7 @@ export default function App() {
                 <div className="bg-[#020603]/90 border border-[#00ff66]/20 p-5 rounded-lg" id="timeframe_and_controls">
                   <div className="mb-4 pb-4 border-b border-[#00ff66]/10 flex justify-between items-center bg-[#030904] p-3 rounded">
                     <span className="text-xs font-mono text-[#00ff66]/60">LOCKED SYSTEM CONTRACT:</span>
-                    <span className="text-sm font-black text-[#00ff66] bg-[#00ff66]/15 px-3 py-1 rounded border border-[#00ff66]/20 font-bold uppercase">{selectedPair} SPOT</span>
+                    <span className="text-sm font-black text-[#00ff66] bg-[#00ff66]/15 px-3 py-1 rounded border border-[#00ff66]/20 font-bold uppercase">{selectedPair}</span>
                   </div>
 
                   <h3 className="text-sm font-bold uppercase tracking-widest text-[#00ff66]/80 mb-4 flex items-center space-x-2">
@@ -762,7 +737,7 @@ export default function App() {
                   <div className="flex justify-between items-center border-b border-[#00ff66]/10 pb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-[#00ff66] flex items-center space-x-2">
                       <Activity className="w-4 h-4" />
-                      <span>REAL-TIME SPOT {selectedPair} FEED</span>
+                      <span>REAL-TIME {selectedPair} FEED</span>
                     </h3>
                     <div className="flex items-center space-x-2">
                       <span className="w-1.5 h-1.5 bg-[#00ff66] rounded-full animate-ping" />
@@ -771,7 +746,7 @@ export default function App() {
                   </div>
 
                   <div className="bg-black/40 border border-[#00ff66]/15 p-4 rounded text-center">
-                    <span className="text-[10px] font-mono text-[#00ff66]/55 block uppercase tracking-wider mb-1">{selectedPair} SPOT LIVE PRICE</span>
+                    <span className="text-[10px] font-mono text-[#00ff66]/55 block uppercase tracking-wider mb-1">{selectedPair} LIVE PRICE</span>
                     <span className="text-3xl font-black text-white glow-green font-mono">${priceData.price.toFixed(selectedPair.includes('EUR') || selectedPair.includes('GBP') ? 5 : 2)}</span>
                     <div className="flex justify-center items-center gap-1.5 mt-2">
                       <span className={`w-2 h-2 rounded-full ${priceData.change >= 0 ? 'bg-[#00ff66]' : 'bg-red-500'}`} />
@@ -800,7 +775,7 @@ export default function App() {
                   
                   {/* Hexagon tech grid decoration */}
                   <div className="absolute top-3 right-3 flex items-center space-x-1 text-[9px] font-mono text-[#00ff66]/50 bg-black/40 px-2 py-0.5 border border-[#00ff66]/10 rounded">
-                    <span>NEXT CANDLE {formatCountdown(countdownMs)}</span>
+                    <span>LIVE AI CANDLE SCAN</span>
                   </div>
 
                   <h3 className="text-sm font-bold uppercase tracking-widest text-[#00ff66]/80 mb-4 flex items-center space-x-2">
@@ -874,7 +849,7 @@ export default function App() {
 
                             <div className="p-2.5 bg-[#030904] border border-[#00ff66]/15 rounded font-mono text-[10px]">
                               <span className="text-[#00ff66]/50 block uppercase font-bold">ACTIVE PAIR</span>
-                              <span className="text-xs font-bold text-[#00ff66] uppercase">{selectedPair} SPOT</span>
+                              <span className="text-xs font-bold text-[#00ff66] uppercase">{selectedPair}</span>
                             </div>
                           </div>
                         </div>
