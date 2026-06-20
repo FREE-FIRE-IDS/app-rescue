@@ -562,8 +562,8 @@ export default function App() {
                 </div>
                 <div className="h-4 w-[1px] bg-[#00ff66]/20 hidden sm:block"></div>
                 <div className="flex items-center space-x-2 text-[10px] uppercase">
-                  <span className="text-[#00ff66]/55">NEXT CANDLE</span>
-                  <span className="text-white font-black tabular-nums">{formatCountdown(countdownMs)}</span>
+                  <span className="text-[#00ff66]/55">LIVE CANDLE</span>
+                  <span className="text-white font-black tabular-nums">0.1S SCAN</span>
                 </div>
                 <div className="h-4 w-[1px] bg-[#00ff66]/20 hidden sm:block"></div>
                 <button
@@ -774,7 +774,7 @@ export default function App() {
                   
                   {/* Hexagon tech grid decoration */}
                   <div className="absolute top-3 right-3 flex items-center space-x-1 text-[9px] font-mono text-[#00ff66]/50 bg-black/40 px-2 py-0.5 border border-[#00ff66]/10 rounded">
-                    <span>NEXT CANDLE {formatCountdown(countdownMs)}</span>
+                    <span>LIVE AI CANDLE SCAN</span>
                   </div>
 
                   <h3 className="text-sm font-bold uppercase tracking-widest text-[#00ff66]/80 mb-4 flex items-center space-x-2">
