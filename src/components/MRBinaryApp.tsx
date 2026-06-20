@@ -82,7 +82,7 @@ export default function App() {
       // Cycle candlestick block every 12 updates to scroll chart
       if (last.volume % 12 === 0) {
         const nextOpen = last.close;
-        const nextCandle: CandleData = {
+        const rollingCandle: CandleData = {
           time: 'now',
           open: nextOpen,
           high: nextOpen,
@@ -91,7 +91,7 @@ export default function App() {
           volume: 1,
           isAiChecked: true
         };
-        return [...copy.slice(1), nextCandle];
+        return [...copy.slice(1), rollingCandle];
       }
       return copy;
     });
