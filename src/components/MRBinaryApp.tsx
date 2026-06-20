@@ -16,28 +16,6 @@ import { useServerFn } from '@tanstack/react-start';
 import { fetchMarketDataFn, generateSignalFn } from '@/lib/mr-binary/market.functions';
 import { AIChart } from './AIChart';
 
-const TIMEFRAME_MS: Record<TimeFrameOption, number> = {
-  '1 Min': 60_000,
-  '2 Min': 120_000,
-  '5 Min': 300_000,
-  '15 Min': 900_000,
-  '30 Min': 1_800_000,
-};
-
-const getNextCandleTime = (timeFrame: TimeFrameOption, now = Date.now()) => {
-  const span = TIMEFRAME_MS[timeFrame] ?? 60_000;
-  return Math.ceil(now / span) * span;
-};
-
-const formatCountdown = (ms: number) => {
-  const safe = Math.max(0, ms);
-  const totalSeconds = Math.floor(safe / 1000);
-  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-  const tenths = Math.floor((safe % 1000) / 100);
-  return `${minutes}:${seconds}.${tenths}`;
-};
-
 export default function App() {
   // Login & Flow State
   const [screen, setScreen] = useState<ScreenState>('INTRO_ANIMATION');
@@ -126,8 +104,6 @@ export default function App() {
   const [totalVerificationPhases, setTotalVerificationPhases] = useState(200);
   const [currentCheckingIndicator, setCurrentCheckingIndicator] = useState('');
   const [activeSignal, setActiveSignal] = useState<SignalResponse | null>(null);
-  const [nextCandleTime, setNextCandleTime] = useState(() => getNextCandleTime('1 Min'));
-  const [countdownMs, setCountdownMs] = useState(() => Math.max(0, getNextCandleTime('1 Min') - Date.now()));
 
   // Audio indicators simulated visually, but let's have a nice sound frequency generator using WebAudio if allowed
   const playBeep = (freq: number, type: 'sine' | 'square' | 'sawtooth' = 'sine', duration: number = 0.08) => {
@@ -177,17 +153,6 @@ export default function App() {
     const interval = setInterval(tick, 100);
     return () => clearInterval(interval);
   }, [selectedPair, fetchMarketData]);
-
-  useEffect(() => {
-    const syncCountdown = () => {
-      const next = getNextCandleTime(selectedTime);
-      setNextCandleTime(next);
-      setCountdownMs(Math.max(0, next - Date.now()));
-    };
-    syncCountdown();
-    const interval = setInterval(syncCountdown, 100);
-    return () => clearInterval(interval);
-  }, [selectedTime]);
 
   // Operator authentication — restored AHAD credentials
   const handleLogin = (e: React.FormEvent) => {
