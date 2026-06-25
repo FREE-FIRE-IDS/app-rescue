@@ -543,7 +543,7 @@ export default function App() {
                     AHAD GOLD OTC <span className="text-[10px] bg-[#00ff66]/25 text-[#00ff66] px-2 py-0.5 rounded font-mono font-normal">{selectedPair}</span>
                   </h1>
                   <p className="text-xs text-[#00ff66]/60 font-mono tracking-wider">
-                    CREATED BY AHAD OFFICIAL • LIVE AI CANDLESTICK ANALYZER
+                    CREATED BY AHAD OFFICIAL • ALGORITHMIC AI TREND ENGINE
                   </p>
                 </div>
               </div>
