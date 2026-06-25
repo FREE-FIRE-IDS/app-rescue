@@ -58,7 +58,7 @@ export const AIChart: React.FC<AIChartProps> = ({
             <div className="w-1.5 h-1.5 rounded-full bg-[#00ff66]"></div>
           </div>
           <span className="text-xs font-mono font-black text-white uppercase tracking-widest">
-            LIVE AI CANDLESTICK ANALYZER
+            ALGORITHMIC AI TREND ENGINE
           </span>
         </div>
         <div className="flex items-center space-x-3 text-[10px] font-mono">
