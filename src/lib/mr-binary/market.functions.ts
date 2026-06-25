@@ -640,7 +640,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
         const result = await generateObject({
           model: gateway("google/gemini-3-flash-preview"),
           schema: AiSignalSchema,
-          system: "You are a strict LIVE AI candlestick analyzer for immediate short-expiry market analysis. Study RSI, MACD, EMA 9/21, Bollinger Bands, Stochastic, Pivot Points, Fibonacci, current live candle pressure, past candles, pattern states, trend/MTF alignment and risk flags. Return only CALL or PUT, never WAIT or next-candle prediction. If data is mixed, choose the statistically stronger current entry side and lower confidence.",
+          system: "You are a strict quantitative confirmation engine for immediate short-expiry entries. Confirm direction strictly from algorithmic math: RSI, MACD histogram, EMA 9/21 trend stack, Bollinger Bands position/width, Stochastic, Pivot Points, Fibonacci retracement, ADX/MTF alignment and risk flags. Do NOT predict next candle. Do NOT do candlestick-pattern guessing. Return only CALL or PUT based on current statistical edge; if mixed, pick the mathematically stronger side and lower confidence.",
           prompt: JSON.stringify(snapshot),
           timeout: 8000,
         });
@@ -696,8 +696,8 @@ export const generateSignalFn = createServerFn({ method: "POST" })
       priceAtSignal: entryPrice,
       accuracy: confidence,
       executeTime: new Date().toISOString().slice(11, 19) + " UTC",
-      analysisMode: "LIVE AI candlestick analyzer + 200-phase current-entry scan",
-      aiReasoning: `${displayPair(pair)} ${cfg.interval}: RSI/MACD/EMA9-21/Bollinger/Stochastic/Pivot/Fibonacci + live candle pressure checked across ${phases.length} phases. score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI filter=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}${aiRiskFlags.length ? ` flags=${aiRiskFlags.join(", ")}` : ""}.` : ""}`,
+      analysisMode: "Algorithmic math + AI confirmation (EMA trend / RSI / MACD / BB / Stoch / Pivot / Fib / MTF)",
+      aiReasoning: `${displayPair(pair)} ${cfg.interval}: RSI/MACD/EMA9-21/Bollinger/Stochastic/Pivot/Fibonacci + EMA trend & MTF alignment confirmed across ${phases.length} algorithmic phases. score=${score.toFixed(2)}, consensus=${(consensus * 100).toFixed(0)}%, MTF=${htfAligned && confirmAligned ? "aligned" : "mixed"} → ${direction}.${aiVerdict !== "UNKNOWN" ? ` AI confirmation=${aiVerdict}${aiNote ? ` (${aiNote})` : ""}${aiRiskFlags.length ? ` flags=${aiRiskFlags.join(", ")}` : ""}.` : ""}`,
       phases,
       timestamp: Date.now(),
       signalDecision: isUp ? "STRONG BUY" : "STRONG SELL",

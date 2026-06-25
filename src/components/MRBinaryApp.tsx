@@ -223,7 +223,7 @@ export default function App() {
     setApiError('');
     setCurrentVerificationPhase(0);
     setTotalVerificationPhases(200);
-    setCurrentCheckingIndicator('LIVE AI CANDLESTICK ANALYZER: RSI / MACD / EMA / BB / STOCH / PIVOT / FIB...');
+    setCurrentCheckingIndicator('ALGORITHMIC AI ENGINE: RSI / MACD / EMA TREND / BB / STOCH / PIVOT / FIB...');
 
     playBeep(600, 'sawtooth', 0.1);
 
@@ -543,7 +543,7 @@ export default function App() {
                     AHAD GOLD OTC <span className="text-[10px] bg-[#00ff66]/25 text-[#00ff66] px-2 py-0.5 rounded font-mono font-normal">{selectedPair}</span>
                   </h1>
                   <p className="text-xs text-[#00ff66]/60 font-mono tracking-wider">
-                    CREATED BY AHAD OFFICIAL • LIVE AI CANDLESTICK ANALYZER
+                    CREATED BY AHAD OFFICIAL • ALGORITHMIC AI TREND ENGINE
                   </p>
                 </div>
               </div>
@@ -775,7 +775,7 @@ export default function App() {
                   
                   {/* Hexagon tech grid decoration */}
                   <div className="absolute top-3 right-3 flex items-center space-x-1 text-[9px] font-mono text-[#00ff66]/50 bg-black/40 px-2 py-0.5 border border-[#00ff66]/10 rounded">
-                    <span>LIVE AI CANDLE SCAN</span>
+                    <span>ALGO + AI CONFIRMATION</span>
                   </div>
 
                   <h3 className="text-sm font-bold uppercase tracking-widest text-[#00ff66]/80 mb-4 flex items-center space-x-2">
