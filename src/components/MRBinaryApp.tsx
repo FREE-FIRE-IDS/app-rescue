@@ -150,7 +150,7 @@ export default function App() {
       }
     };
     tick();
-    const interval = setInterval(tick, 100);
+    const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [selectedPair, fetchMarketData]);
 
@@ -223,7 +223,7 @@ export default function App() {
     setApiError('');
     setCurrentVerificationPhase(0);
     setTotalVerificationPhases(200);
-    setCurrentCheckingIndicator('ALGORITHMIC AI ENGINE: RSI / MACD / EMA TREND / BB / STOCH / PIVOT / FIB...');
+    setCurrentCheckingIndicator('REAL MARKET API CHECK: RSI / MACD / EMA TREND / BB / STOCH / PIVOT / FIB...');
 
     playBeep(600, 'sawtooth', 0.1);
 
@@ -237,8 +237,8 @@ export default function App() {
         'Mapping Pivot Points support/resistance...',
         'Mapping Fibonacci retracement zones...',
         'Detecting latest candlestick patterns...',
-        'Analyzing live current candle pressure...',
-        'Sending complete phase snapshot to AI filter...',
+        'Checking live price movement and EMA trend alignment...',
+        'Sending complete market snapshot to AI confirmation...',
       ];
       for (let i = 0; i < scanLabels.length; i++) {
         setCurrentVerificationPhase(Math.round(((i + 1) / scanLabels.length) * 70));
@@ -304,7 +304,7 @@ export default function App() {
                   AHAD GOLD OTC TERMINAL
                 </h1>
                 <p className="text-[10px] text-[#00ff66]/60 font-mono mt-1 tracking-wider">
-                  LIVE GOLD OTC CANDLESTICK ANALYTICS
+                  LIVE GOLD OTC MARKET DATA
                 </p>
               </div>
 
@@ -543,7 +543,7 @@ export default function App() {
                     AHAD GOLD OTC <span className="text-[10px] bg-[#00ff66]/25 text-[#00ff66] px-2 py-0.5 rounded font-mono font-normal">{selectedPair}</span>
                   </h1>
                   <p className="text-xs text-[#00ff66]/60 font-mono tracking-wider">
-                    CREATED BY AHAD OFFICIAL • ALGORITHMIC AI TREND ENGINE
+                    CREATED BY AHAD OFFICIAL • REAL MARKET API DATA ENGINE
                   </p>
                 </div>
               </div>
@@ -562,8 +562,8 @@ export default function App() {
                 </div>
                 <div className="h-4 w-[1px] bg-[#00ff66]/20 hidden sm:block"></div>
                 <div className="flex items-center space-x-2 text-[10px] uppercase">
-                  <span className="text-[#00ff66]/55">LIVE CANDLE</span>
-                  <span className="text-white font-black tabular-nums">0.1S SCAN</span>
+                  <span className="text-[#00ff66]/55">MARKET API</span>
+                  <span className="text-white font-black tabular-nums">1S LIVE FETCH</span>
                 </div>
                 <div className="h-4 w-[1px] bg-[#00ff66]/20 hidden sm:block"></div>
                 <button
@@ -607,7 +607,7 @@ export default function App() {
 
                   <div className="space-y-2.5" id="asset_selection_buttons">
                     {([
-                      { symbol: 'GOLD OTC', desc: 'Gold OTC live candle analyzer', category: 'OTC' },
+                      { symbol: 'GOLD OTC', desc: 'Gold OTC live market feed', category: 'OTC' },
                       { symbol: 'XAU/USD', desc: 'Spot Gold vs US Dollar', category: 'Commodity' },
                       { symbol: 'EUR/USD', desc: 'Euro vs US Dollar', category: 'Forex' },
                       { symbol: 'GBP/USD', desc: 'British Pound vs US Dollar', category: 'Forex' },
@@ -741,7 +741,7 @@ export default function App() {
                     </h3>
                     <div className="flex items-center space-x-2">
                       <span className="w-1.5 h-1.5 bg-[#00ff66] rounded-full animate-ping" />
-                      <span className="text-[9px] font-mono text-[#00ff66]/70">0.1S LIVE FEED ACTIVE</span>
+                      <span className="text-[9px] font-mono text-[#00ff66]/70">1S MARKET API FETCH ACTIVE</span>
                     </div>
                   </div>
 

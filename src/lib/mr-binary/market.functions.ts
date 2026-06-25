@@ -640,7 +640,7 @@ export const generateSignalFn = createServerFn({ method: "POST" })
         const result = await generateObject({
           model: gateway("google/gemini-3-flash-preview"),
           schema: AiSignalSchema,
-          system: "You are a strict quantitative confirmation engine for immediate short-expiry entries. Confirm direction strictly from algorithmic math: RSI, MACD histogram, EMA 9/21 trend stack, Bollinger Bands position/width, Stochastic, Pivot Points, Fibonacci retracement, ADX/MTF alignment and risk flags. Do NOT predict next candle. Do NOT do candlestick-pattern guessing. Return only CALL or PUT based on current statistical edge; if mixed, pick the mathematically stronger side and lower confidence.",
+          system: "You are a strict quantitative confirmation engine for immediate short-expiry entries. Confirm direction strictly from real market API data and mathematical checks: RSI, MACD histogram, EMA 9/21 trend stack, Bollinger Bands position/width, Stochastic, Pivot Points, Fibonacci retracement, ADX/MTF alignment and risk flags. Do NOT predict next candle. Do NOT use fake accuracy. Return only CALL or PUT based on current statistical edge; if mixed, pick the mathematically stronger side and lower confidence.",
           prompt: JSON.stringify(snapshot),
           timeout: 8000,
         });
