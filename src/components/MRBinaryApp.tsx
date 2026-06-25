@@ -223,7 +223,7 @@ export default function App() {
     setApiError('');
     setCurrentVerificationPhase(0);
     setTotalVerificationPhases(200);
-    setCurrentCheckingIndicator('LIVE AI CANDLESTICK ANALYZER: RSI / MACD / EMA / BB / STOCH / PIVOT / FIB...');
+    setCurrentCheckingIndicator('ALGORITHMIC AI ENGINE: RSI / MACD / EMA TREND / BB / STOCH / PIVOT / FIB...');
 
     playBeep(600, 'sawtooth', 0.1);
 
